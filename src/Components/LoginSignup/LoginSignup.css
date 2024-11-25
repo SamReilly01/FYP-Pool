@@ -4,14 +4,28 @@
     justify-content: center;
     align-items: center;
     margin: auto;
-    margin-top: 0; /* Remove excessive margin */
     padding: 30px;
-    width: 600px; /* Reduce width if needed */
-    max-width: 90%; /* Ensures responsiveness */
+    width: 600px;
+    max-width: 90%;
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
+
+
+.login-page {
+    font-family: 'Poppins', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    justify-content: center; /* Centers horizontally */
+    align-items: center; /* Centers vertically */
+    min-height: 100vh; /* Ensures the page fills the viewport height */
+    margin: 0;
+    background: url('../Assets/Icons/background1.jpg') no-repeat center center;
+    background-size: cover; /* Ensures full coverage */
+}
+
 
 
 .header {

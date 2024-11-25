@@ -40,7 +40,7 @@ export default function NavBar() {
             >
                 <Toolbar>
                     <Typography variant="h6" noWrap component="div">
-                        Home Page
+                        Help Page
                     </Typography>
                 </Toolbar>
             </AppBar>
@@ -133,7 +133,7 @@ export default function NavBar() {
             </Drawer>
             <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#fafafa' }}>
                 <Toolbar />
-                <Typography variant="h4">Welcome to the Pool Game Simulation!</Typography>
+                <Typography variant="h4">Welcome to the Help Page!</Typography>
                 <img
                     src="https://source.unsplash.com/featured/?pool"
                     alt="Pool Table"
