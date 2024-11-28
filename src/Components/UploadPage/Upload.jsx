@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import AppBar from '@mui/material/AppBar';
@@ -12,6 +12,8 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
 import HomeIcon from '@mui/icons-material/Home';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import VideogameAssetIcon from '@mui/icons-material/VideogameAsset';
@@ -23,10 +25,27 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 280;
 
-export default function NavBar() {
+export default function UploadPage() {
     const location = useLocation();
     const path = location.pathname;
     const navigate = useNavigate();
+
+    const [image, setImage] = useState(null);
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImage(URL.createObjectURL(file));
+        }
+    };
+
+    const handleProceed = () => {
+        if (image) {
+            navigate('/simulation'); // Navigate to the simulation page
+        } else {
+            alert('Please upload an image first.');
+        }
+    };
 
     return (
         <Box sx={{ display: 'flex', height: '100vh' }}>
@@ -40,7 +59,7 @@ export default function NavBar() {
             >
                 <Toolbar>
                     <Typography variant="h6" noWrap component="div">
-                        Image Upload Page
+                        Upload Page
                     </Typography>
                 </Toolbar>
             </AppBar>
@@ -133,12 +152,91 @@ export default function NavBar() {
             </Drawer>
             <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#fafafa' }}>
                 <Toolbar />
-                <Typography variant="h4">Welcome to the Upload Page!</Typography>
-                <img
-                    src="https://source.unsplash.com/featured/?pool"
-                    alt="Pool Table"
-                    style={{ width: '100%', borderRadius: '8px', marginTop: '20px' }}
-                />
+                <Grid container spacing={3} alignItems="center">
+                    <Grid item xs={12}>
+                        <Typography variant="h4" align="center">
+                            Upload Your Pool Table Image
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: 400,
+                                border: '2px dashed #ccc',
+                                backgroundColor: '#fff',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <input
+                                id="image-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                style={{ display: 'none' }}
+                            />
+                            <label
+                                htmlFor="image-upload"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: '100%',
+                                    width: '100%',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <Typography>Click to Upload or Drag and Drop</Typography>
+                            </label>
+                        </Paper>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: 400,
+                                backgroundColor: '#f5f5f5',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {image ? (
+                                <img
+                                    src={image}
+                                    alt="Preview"
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        objectFit: 'contain',
+                                    }}
+                                />
+                            ) : (
+                                <Typography>Image Preview</Typography>
+                            )}
+                        </Paper>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Button
+                            variant="contained"
+                            fullWidth
+                            sx={{
+                                backgroundColor: '#1565C0',
+                                color: '#fff',
+                                height: 50,
+                                '&:hover': { backgroundColor: '#0d47a1' },
+                            }}
+                            onClick={handleProceed}
+                        >
+                            Proceed to Simulation
+                        </Button>
+                    </Grid>
+                </Grid>
             </Box>
         </Box>
     );
