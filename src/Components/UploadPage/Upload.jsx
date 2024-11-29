@@ -30,20 +30,51 @@ export default function UploadPage() {
     const path = location.pathname;
     const navigate = useNavigate();
 
-    const [image, setImage] = useState(null);
+    const [image, setImage] = useState(null); // Preview URL
+    const [imageFile, setImageFile] = useState(null); // Actual file object
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setImage(URL.createObjectURL(file));
+            setImage(URL.createObjectURL(file)); // Create a preview URL
+            setImageFile(file); // Save the file object for API upload
         }
     };
 
-    const handleProceed = () => {
-        if (image) {
-            navigate('/simulation'); // Navigate to the simulation page
-        } else {
+    const handleProceed = async () => {
+        if (!imageFile) {
             alert('Please upload an image first.');
+            return;
+        }
+    
+        try {
+            const formData = new FormData();
+            formData.append('file', imageFile);
+    
+            // Retrieve user_id from localStorage or another valid source
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                alert('User ID is not available.');
+                return;
+            }
+            formData.append('user_id', userId);
+    
+            const response = await fetch('http://localhost:5000/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+    
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Image uploaded successfully:', result);
+                navigate('/simulation');
+            } else {
+                const error = await response.json();
+                alert(`Failed to upload image: ${error.error}`);
+            }
+        } catch (err) {
+            console.error('Unexpected error in handleProceed:', err);
+            alert('An unexpected error occurred while uploading the image.');
         }
     };
 

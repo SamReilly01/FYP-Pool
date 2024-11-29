@@ -14,18 +14,22 @@ const LoginSignup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage(""); // Clear any previous messages
-
+    
         try {
             if (isLogin) {
                 // Login logic
                 const response = await loginUser(email, password);
+    
+                // Save user_id and token in localStorage
+                localStorage.setItem("user_id", response.user_id);
+                localStorage.setItem("token", response.token);
+    
                 setMessage("Login successful!");
                 setMessageType("success");
+    
                 console.log("Token:", response.token);
-
-                // Store token in localStorage
-                localStorage.setItem("token", response.token);
-
+                console.log("User ID:", response.user_id);
+    
                 // Redirect to the home page
                 navigate("/home");
             } else {
@@ -33,8 +37,13 @@ const LoginSignup = () => {
                 const response = await registerUser(email, password);
                 setMessage("Registration successful!");
                 setMessageType("success");
+    
+                // Optionally store user_id for registration
+                if (response.user_id) {
+                    localStorage.setItem("user_id", response.user_id);
+                }
             }
-
+    
             // Clear the input fields
             setEmail("");
             setPassword("");
@@ -42,13 +51,14 @@ const LoginSignup = () => {
             setMessage(err.error || "Something went wrong.");
             setMessageType("error");
         }
-
+    
         // Automatically clear the message after 4 seconds
         setTimeout(() => {
             setMessage("");
             setMessageType("");
         }, 4000);
     };
+    
 
     return (
         <div className="login-page">
