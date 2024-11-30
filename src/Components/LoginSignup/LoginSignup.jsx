@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate for redirection
+import { useNavigate } from "react-router-dom"; 
 import { registerUser, loginUser } from "../../services/authService";
 import "./LoginSignup.css";
 
 const LoginSignup = () => {
     const [isLogin, setIsLogin] = useState(true); // Toggle between login and signup
-    const [email, setEmail] = useState(""); // Email input state
-    const [password, setPassword] = useState(""); // Password input state
+    const [email, setEmail] = useState(""); // Email input
+    const [password, setPassword] = useState(""); // Password input 
     const [message, setMessage] = useState(""); // Message to show success or error
     const [messageType, setMessageType] = useState(""); // "success" or "error"
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate(); 
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,7 +17,6 @@ const LoginSignup = () => {
     
         try {
             if (isLogin) {
-                // Login logic
                 const response = await loginUser(email, password);
     
                 // Save user_id and token in localStorage
@@ -30,21 +29,20 @@ const LoginSignup = () => {
                 console.log("Token:", response.token);
                 console.log("User ID:", response.user_id);
     
-                // Redirect to the home page
-                navigate("/home");
+                // Redirect to the upload page
+                navigate("/upload");
             } else {
-                // Signup logic
                 const response = await registerUser(email, password);
                 setMessage("Registration successful!");
                 setMessageType("success");
     
-                // Optionally store user_id for registration
+                // Store user_id for registration
                 if (response.user_id) {
                     localStorage.setItem("user_id", response.user_id);
                 }
             }
     
-            // Clear the input fields
+            // Clear the input fields so nothing saves
             setEmail("");
             setPassword("");
         } catch (err) {

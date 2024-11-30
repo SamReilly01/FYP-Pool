@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
-const pool = require('../models/db'); // Import your database connection
-const fs = require('fs'); // To ensure the uploads folder exists
+const pool = require('../models/db'); 
+const fs = require('fs'); 
 
 const router = express.Router();
 
@@ -11,7 +11,7 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Set up multer for file storage
+// file storage
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadsDir); // Save files in the 'uploads' directory
@@ -54,7 +54,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             VALUES ($1, $2, NOW())
             RETURNING *;
         `;
-        const values = [parseInt(user_id, 10), filePath]; // Ensure user_id is an integer
+        const values = [parseInt(user_id, 10), filePath]; // To ensure user_id is an integer
 
         const result = await pool.query(query, values);
 
@@ -63,7 +63,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             image: result.rows[0],
         });
     } catch (err) {
-        console.error('Error uploading image:', err.message); // Log the specific error
+        console.error('Error uploading image:', err.message); // 
         res.status(500).json({ error: err.message }); // Send the error to the frontend
     }
 });

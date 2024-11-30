@@ -51,7 +51,7 @@ export default function UploadPage() {
             const formData = new FormData();
             formData.append('file', imageFile);
     
-            // Retrieve user_id from localStorage or another valid source
+            // Retrieve user_id from localStorage which was set during signup and login
             const userId = localStorage.getItem('user_id');
             if (!userId) {
                 alert('User ID is not available.');
