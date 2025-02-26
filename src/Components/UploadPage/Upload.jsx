@@ -49,34 +49,33 @@ export default function UploadPage() {
     
         try {
             const formData = new FormData();
-            formData.append('file', imageFile);
+            formData.append('image', imageFile); // ✅ Backend expects 'image', not 'file'
     
-            // Retrieve user_id from localStorage which was set during signup and login
-            const userId = localStorage.getItem('user_id');
-            if (!userId) {
-                alert('User ID is not available.');
-                return;
-            }
-            formData.append('user_id', userId);
-    
-            const response = await fetch('http://localhost:5000/api/upload', {
+            const response = await fetch('http://localhost:5000/api/image/upload', {
                 method: 'POST',
                 body: formData,
             });
     
-            if (response.ok) {
-                const result = await response.json();
-                console.log('Image uploaded successfully:', result);
-                navigate('/simulation');
-            } else {
-                const error = await response.json();
-                alert(`Failed to upload image: ${error.error}`);
+            if (!response.ok) {
+                const error = await response.text(); // ✅ Handle non-JSON error responses
+                throw new Error(error);
             }
+    
+            const result = await response.json();
+            console.log('✅ Image uploaded successfully:', result);
+    
+            // ✅ Save uploaded image path to localStorage
+            localStorage.setItem('uploadedImagePath', result.image_url);
+    
+            // ✅ Redirect to simulation page
+            navigate('/simulation');
         } catch (err) {
-            console.error('Unexpected error in handleProceed:', err);
+            console.error('❌ Unexpected error in handleProceed:', err);
             alert('An unexpected error occurred while uploading the image.');
         }
     };
+    
+    
 
     return (
         <Box sx={{ display: 'flex', height: '100vh' }}>

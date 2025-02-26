@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import AppBar from '@mui/material/AppBar';
@@ -23,10 +23,72 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 280;
 
-export default function NavBar() {
+export default function SimulationPage() {
     const location = useLocation();
     const path = location.pathname;
     const navigate = useNavigate();
+
+    // State Variables
+    const [processedImage, setProcessedImage] = useState(null);
+    const [ballPositions, setBallPositions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const imageRef = useRef(null);
+    const [imageSize, setImageSize] = useState({ width: 1, height: 1 });
+
+    useEffect(() => {
+        const fetchAndProcessImage = async () => {
+            try {
+                console.log("📡 Fetching latest uploaded image...");
+                const response = await fetch('http://localhost:5000/api/image/latest');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "Failed to fetch latest image.");
+                }
+
+                const imagePath = data.image_url;
+                console.log("✅ Latest image fetched:", imagePath);
+
+                console.log("🚀 Sending image for processing:", imagePath);
+                const processResponse = await fetch('http://localhost:5000/api/image/process', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image_path: imagePath }),
+                });
+
+                const result = await processResponse.json();
+                if (!processResponse.ok) {
+                    throw new Error(result.error || "Failed to process image.");
+                }
+
+                console.log("✅ Processed image result:", result);
+
+                // ✅ Ensure only the processed image is displayed
+                const processedImagePath = `http://localhost:5000${result.transformed_image_url}`;
+                setProcessedImage(processedImagePath);
+                setBallPositions(result.ball_positions);
+                setLoading(false);
+            } catch (error) {
+                console.error("❌ Error:", error);
+                setError(error.message);
+                setLoading(false);
+            }
+        };
+
+        fetchAndProcessImage();
+    }, []);
+
+    // Capture image dimensions once it's loaded
+    const handleImageLoad = () => {
+        if (imageRef.current) {
+            setImageSize({
+                width: imageRef.current.clientWidth,
+                height: imageRef.current.clientHeight,
+            });
+            console.log("📏 Image loaded - Dimensions:", imageRef.current.clientWidth, imageRef.current.clientHeight);
+        }
+    };
 
     return (
         <Box sx={{ display: 'flex', height: '100vh' }}>
@@ -69,15 +131,7 @@ export default function NavBar() {
                             { text: 'Help', icon: <HelpIcon />, link: '/help' },
                             { text: 'About', icon: <InfoIcon />, link: '/about' },
                         ].map((item) => (
-                            <ListItem
-                                key={item.text}
-                                disablePadding
-                                sx={{
-                                    '&:hover': {
-                                        backgroundColor: '#e0e0e0',
-                                    },
-                                }}
-                            >
+                            <ListItem key={item.text} disablePadding sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}>
                                 <ListItemButton
                                     component={Link}
                                     to={item.link}
@@ -86,25 +140,14 @@ export default function NavBar() {
                                         '&.Mui-selected': {
                                             backgroundColor: '#1565C0',
                                             color: '#fff',
-                                            '&:hover': {
-                                                backgroundColor: '#0d47a1',
-                                            },
+                                            '&:hover': { backgroundColor: '#0d47a1' },
                                         },
                                     }}
                                 >
-                                    <ListItemIcon
-                                        sx={{
-                                            color: item.link === path ? '#fff' : '#000',
-                                        }}
-                                    >
+                                    <ListItemIcon sx={{ color: item.link === path ? '#fff' : '#000' }}>
                                         {item.icon}
                                     </ListItemIcon>
-                                    <ListItemText
-                                        primary={item.text}
-                                        sx={{
-                                            color: item.link === path ? '#fff' : '#000',
-                                        }}
-                                    />
+                                    <ListItemText primary={item.text} sx={{ color: item.link === path ? '#fff' : '#000' }} />
                                 </ListItemButton>
                             </ListItem>
                         ))}
@@ -117,9 +160,7 @@ export default function NavBar() {
                             fullWidth
                             sx={{
                                 backgroundColor: '#D32F2F',
-                                '&:hover': {
-                                    backgroundColor: '#B71C1C',
-                                },
+                                '&:hover': { backgroundColor: '#B71C1C' },
                             }}
                             onClick={() => {
                                 console.log('Logging out...');
@@ -134,11 +175,45 @@ export default function NavBar() {
             <Box component="main" sx={{ flexGrow: 1, p: 3, backgroundColor: '#fafafa' }}>
                 <Toolbar />
                 <Typography variant="h4">Welcome to the Simulation Page!</Typography>
-                <img
-                    src="https://source.unsplash.com/featured/?pool"
-                    alt="Pool Table"
-                    style={{ width: '100%', borderRadius: '8px', marginTop: '20px' }}
-                />
+
+                {loading ? (
+                    <Typography>Loading simulation...</Typography>
+                ) : error ? (
+                    <Typography color="error">{error}</Typography>
+                ) : processedImage ? (
+                    <div style={{ position: 'relative', display: 'inline-block', marginTop: '20px' }}>
+                        {/* Processed Image */}
+                        <img
+                            ref={imageRef}
+                            key={processedImage} // Force re-render when image changes
+                            src={processedImage} // ✅ Now correctly showing the processed image
+                            alt="Processed Pool Table"
+                            style={{ width: '100%', borderRadius: '8px', marginTop: '20px' }}
+                            onLoad={handleImageLoad}
+                            onError={(e) => console.error("❌ Image failed to load:", e.target.src)}
+                        />
+
+                        {/* Overlay Balls */}
+                        {ballPositions.map((ball, index) => (
+                            <div
+                                key={index}
+                                style={{
+                                    position: 'absolute',
+                                    top: `${(ball.y / imageSize.height) * 100}%`,
+                                    left: `${(ball.x / imageSize.width) * 100}%`,
+                                    width: '12px',
+                                    height: '12px',
+                                    backgroundColor: ball.color,
+                                    borderRadius: '50%',
+                                    border: '2px solid white',
+                                    transform: 'translate(-50%, -50%)',
+                                }}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <Typography>No processed image available.</Typography>
+                )}
             </Box>
         </Box>
     );
