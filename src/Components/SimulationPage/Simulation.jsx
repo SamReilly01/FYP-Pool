@@ -5,19 +5,18 @@ import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
+import Slider from '@mui/material/Slider';
 import { styled } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 
 // Icons
-import HomeIcon from '@mui/icons-material/Home';
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-import VideogameAssetIcon from '@mui/icons-material/VideogameAsset';
-import FileDownloadDoneIcon from '@mui/icons-material/FileDownloadDone';
-import SettingsIcon from '@mui/icons-material/Settings';
-import HelpIcon from '@mui/icons-material/Help';
-import InfoIcon from '@mui/icons-material/Info';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import SpeedIcon from '@mui/icons-material/Speed';
 
 // Styled components - same as HomePage.jsx
 const Header = styled(Box)(({ theme }) => ({
@@ -97,7 +96,94 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(1),
 }));
 
-export default function SimulationPage() {
+// Physics constants for the simulation
+const FRICTION = 0.98;
+const RESTITUTION = 0.9; // Bouncing off walls
+const TABLE_WIDTH = 800;
+const TABLE_HEIGHT = 400;
+const BALL_RADIUS = 14;
+const POCKET_RADIUS = 25;
+const POCKET_POSITIONS = [
+  { x: 25, y: 25 },               // Top left
+  { x: TABLE_WIDTH / 2, y: 20 },  // Top middle
+  { x: TABLE_WIDTH - 25, y: 25 }, // Top right
+  { x: 25, y: TABLE_HEIGHT - 25 },               // Bottom left
+  { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 20 },  // Bottom middle
+  { x: TABLE_WIDTH - 25, y: TABLE_HEIGHT - 25 }, // Bottom right
+];
+
+// Collisions need to happen between all balls
+function checkCollision(ball1, ball2) {
+  const dx = ball1.x - ball2.x;
+  const dy = ball1.y - ball2.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  return distance < (BALL_RADIUS * 2);
+}
+
+// Handle ball collision physics
+function resolveCollision(ball1, ball2) {
+  const dx = ball2.x - ball1.x;
+  const dy = ball2.y - ball1.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  // If balls are overlapping, move them apart
+  if (distance < BALL_RADIUS * 2) {
+    const overlap = (BALL_RADIUS * 2) - distance;
+    const moveX = (dx / distance) * (overlap / 2);
+    const moveY = (dy / distance) * (overlap / 2);
+    
+    // Move balls apart
+    ball1.x -= moveX;
+    ball1.y -= moveY;
+    ball2.x += moveX;
+    ball2.y += moveY;
+    
+    // Calculate normalized collision vector
+    const nx = dx / distance;
+    const ny = dy / distance;
+    
+    // Calculate relative velocity
+    const vrx = ball2.vx - ball1.vx;
+    const vry = ball2.vy - ball1.vy;
+    
+    // Calculate the dot product (impulse scalar)
+    const dotProduct = nx * vrx + ny * vry;
+    
+    // Only apply impulse if balls are moving toward each other
+    if (dotProduct > 0) return;
+    
+    // Calculate impulse scalar
+    const impulse = -(1 + RESTITUTION) * dotProduct;
+    
+    // Calculate mass (assuming all balls have same mass)
+    const mass1 = 1;
+    const mass2 = 1;
+    const impulseFactor = impulse / (mass1 + mass2);
+    
+    // Apply impulse
+    ball1.vx -= impulseFactor * mass2 * nx;
+    ball1.vy -= impulseFactor * mass2 * ny;
+    ball2.vx += impulseFactor * mass1 * nx;
+    ball2.vy += impulseFactor * mass1 * ny;
+  }
+}
+
+// Check if ball is in pocket
+function isInPocket(ball) {
+  for (const pocket of POCKET_POSITIONS) {
+    const dx = ball.x - pocket.x;
+    const dy = ball.y - pocket.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance < POCKET_RADIUS) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export default function ImprovedSimulationPage() {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
@@ -107,12 +193,26 @@ export default function SimulationPage() {
   
   // State Variables
   const [processedImage, setProcessedImage] = useState(null);
+  const [originalImage, setOriginalImage] = useState(null);
+  const [originalImageSize, setOriginalImageSize] = useState(null); 
   const [ballPositions, setBallPositions] = useState([]);
+  const [pocketedBalls, setPocketedBalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const imageRef = useRef(null);
-  const [imageSize, setImageSize] = useState({ width: 800, height: 400 }); // Default table dimensions
+  const containerRef = useRef(null);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [simulationStarted, setSimulationStarted] = useState(false);
+  const [simulationPaused, setSimulationPaused] = useState(false);
+  const [tableBounds, setTableBounds] = useState(null);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [simulationStep, setSimulationStep] = useState(0);
+  const [initialBallPositions, setInitialBallPositions] = useState([]);
+  const [simulationSpeed, setSimulationSpeed] = useState(1);
+  const [showTrajectories, setShowTrajectories] = useState(false);
+  const animationRef = useRef(null);
+  const lastTimeRef = useRef(0);
+  const [playerLevel, setPlayerLevel] = useState('intermediate');
 
   useEffect(() => {
     const fetchAndProcessImage = async () => {
@@ -127,6 +227,10 @@ export default function SimulationPage() {
 
         const imagePath = data.image_url;
         console.log("✅ Latest image fetched:", imagePath);
+        
+        // Store original image path
+        const originalImagePath = `http://localhost:5000${imagePath}`;
+        setOriginalImage(originalImagePath);
 
         console.log("🚀 Sending image for processing:", imagePath);
         const processResponse = await fetch('http://localhost:5000/api/image/process', {
@@ -142,10 +246,43 @@ export default function SimulationPage() {
 
         console.log("✅ Processed image result:", result);
 
-        // ✅ Ensure only the processed image is displayed
+        // Store original image dimensions if provided by the backend
+        if (result.original_dimensions) {
+          setOriginalImageSize(result.original_dimensions);
+          console.log("📏 Original dimensions:", result.original_dimensions);
+        }
+
+        // Store table bounds if provided by the backend
+        if (result.table_bounds) {
+          setTableBounds(result.table_bounds);
+          console.log("🎯 Table bounds:", result.table_bounds);
+        }
+
         const processedImagePath = `http://localhost:5000${result.transformed_image_url}`;
         setProcessedImage(processedImagePath);
-        setBallPositions(result.ball_positions || []);
+        
+        // Store ball positions with additional physics properties
+        if (result.ball_positions && result.ball_positions.length > 0) {
+          console.log("🎱 Ball positions:", result.ball_positions);
+          
+          // Add physics properties to the balls
+          const enhancedBallPositions = result.ball_positions.map(ball => ({
+            ...ball,
+            vx: 0,        // Initial x velocity
+            vy: 0,        // Initial y velocity
+            mass: 1,      // All balls have same mass
+            pocketed: false,
+            trajectoryPoints: []
+          }));
+          
+          setBallPositions(enhancedBallPositions);
+          setInitialBallPositions(JSON.parse(JSON.stringify(enhancedBallPositions)));
+        } else {
+          console.warn("⚠️ No ball positions found in the response");
+          setBallPositions([]);
+          setInitialBallPositions([]);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error("❌ Error:", error);
@@ -154,33 +291,269 @@ export default function SimulationPage() {
       }
     };
 
+    // Get player level from localStorage
+    const storedLevel = localStorage.getItem('playerLevel') || 'intermediate';
+    setPlayerLevel(storedLevel);
+
     fetchAndProcessImage();
+    
+    // Cleanup animation frame on unmount
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
   }, []);
 
-  // Capture image dimensions once it's loaded
+  // Handle image load
   const handleImageLoad = () => {
     if (imageRef.current) {
+      // Get the rendered dimensions
+      const renderedWidth = imageRef.current.clientWidth;
+      const renderedHeight = imageRef.current.clientHeight;
+      
+      // Store the rendered image size
       setImageSize({
-        width: imageRef.current.clientWidth,
-        height: imageRef.current.clientHeight,
+        width: renderedWidth,
+        height: renderedHeight,
       });
-      console.log("📏 Image loaded - Dimensions:", imageRef.current.clientWidth, imageRef.current.clientHeight);
+      
+      console.log("📏 Image loaded - Rendered Dimensions:", renderedWidth, renderedHeight);
     }
   };
 
+  // Function to get simulation parameters based on player level
+  const getSimulationParameters = () => {
+    switch(playerLevel) {
+      case 'beginner':
+        return {
+          shotPrecision: 0.7, // More forgiving shots
+          hitStrength: 0.8,   // Medium strength
+          helpEnabled: true   // Show aiming helpers
+        };
+      case 'expert':
+        return {
+          shotPrecision: 0.95, // Very precise shots
+          hitStrength: 1.0,    // Full strength
+          helpEnabled: false   // No helpers
+        };
+      case 'intermediate':
+      default:
+        return {
+          shotPrecision: 0.85, // Normal precision
+          hitStrength: 0.9,    // Normal strength
+          helpEnabled: true    // Show some helpers
+        };
+    }
+  };
+
+  const simulationParams = getSimulationParameters();
+
+  // Set initial velocities for simulation
+  const startPoolSimulation = () => {
+    setBallPositions(prevBalls => {
+      // Find the white ball (cue ball)
+      const cueBall = prevBalls.find(ball => ball.color === "white");
+      
+      if (!cueBall) return prevBalls;
+      
+      // Set a realistic initial velocity for the cue ball only
+      return prevBalls.map(ball => {
+        if (ball.color === "white") {
+          // Random angle between 20 and 60 degrees
+          const angle = Math.random() * 40 + 20;
+          const radians = angle * (Math.PI / 180);
+          
+          // Use player level to determine hit strength
+          const baseSpeed = 8;
+          const randomSpeed = Math.random() * 4; // Random speed between 0-4
+          const hitStrengthMultiplier = simulationParams.hitStrength;
+          const speed = (baseSpeed + randomSpeed) * hitStrengthMultiplier;
+          
+          return {
+            ...ball,
+            vx: Math.cos(radians) * speed,
+            vy: Math.sin(radians) * speed,
+          };
+        }
+        return ball;
+      });
+    });
+    
+    setPocketedBalls([]); // Reset pocketed balls
+    setSimulationStep(0);
+    setSimulationStarted(true);
+    setSimulationPaused(false);
+    lastTimeRef.current = performance.now();
+  };
+
+  // Animation loop for simulation
+  useEffect(() => {
+    // Only run animation when simulation is active
+    if (!simulationStarted || simulationPaused) return;
+
+    const updatePhysics = (timestamp) => {
+      // Calculate time delta (with speed adjustment)
+      const delta = (timestamp - lastTimeRef.current) * (simulationSpeed * 0.06);
+      lastTimeRef.current = timestamp;
+
+      setSimulationStep(prevStep => prevStep + 1);
+      
+      setBallPositions(prevBalls => {
+        // Create a copy of the current balls
+        const updatedBalls = JSON.parse(JSON.stringify(prevBalls));
+        
+        // First update positions based on velocity
+        for (let i = 0; i < updatedBalls.length; i++) {
+          const ball = updatedBalls[i];
+          
+          // Skip already pocketed balls
+          if (ball.pocketed) continue;
+          
+          // Update position
+          ball.x += ball.vx * delta;
+          ball.y += ball.vy * delta;
+          
+          // Apply friction
+          ball.vx *= FRICTION;
+          ball.vy *= FRICTION;
+          
+          // Stop very slow balls
+          if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
+          if (Math.abs(ball.vy) < 0.01) ball.vy = 0;
+          
+          // Check for wall collisions
+          // Left wall
+          if (ball.x < BALL_RADIUS) {
+            ball.x = BALL_RADIUS;
+            ball.vx = -ball.vx * RESTITUTION;
+          }
+          // Right wall
+          if (ball.x > TABLE_WIDTH - BALL_RADIUS) {
+            ball.x = TABLE_WIDTH - BALL_RADIUS;
+            ball.vx = -ball.vx * RESTITUTION;
+          }
+          // Top wall
+          if (ball.y < BALL_RADIUS) {
+            ball.y = BALL_RADIUS;
+            ball.vy = -ball.vy * RESTITUTION;
+          }
+          // Bottom wall
+          if (ball.y > TABLE_HEIGHT - BALL_RADIUS) {
+            ball.y = TABLE_HEIGHT - BALL_RADIUS;
+            ball.vy = -ball.vy * RESTITUTION;
+          }
+          
+          // Check if ball is in a pocket
+          if (isInPocket(ball)) {
+            ball.pocketed = true;
+            setPocketedBalls(prev => [...prev, ball]);
+          }
+          
+          // Track trajectory if needed
+          if (showTrajectories && (ball.vx !== 0 || ball.vy !== 0)) {
+            if (!ball.trajectoryPoints) {
+              ball.trajectoryPoints = [];
+            }
+            
+            // Only add a point every few frames to avoid too many points
+            if (simulationStep % 5 === 0) {
+              ball.trajectoryPoints.push({ x: ball.x, y: ball.y });
+              
+              // Keep only the last 20 points
+              if (ball.trajectoryPoints.length > 20) {
+                ball.trajectoryPoints.shift();
+              }
+            }
+          }
+        }
+        
+        // Check for ball-ball collisions
+        for (let i = 0; i < updatedBalls.length; i++) {
+          for (let j = i + 1; j < updatedBalls.length; j++) {
+            // Skip pocketed balls
+            if (updatedBalls[i].pocketed || updatedBalls[j].pocketed) continue;
+            
+            if (checkCollision(updatedBalls[i], updatedBalls[j])) {
+              resolveCollision(updatedBalls[i], updatedBalls[j]);
+            }
+          }
+        }
+        
+        // Check if all balls have stopped
+        const allStopped = updatedBalls.every(
+          ball => (ball.pocketed || (Math.abs(ball.vx) < 0.01 && Math.abs(ball.vy) < 0.01))
+        );
+        
+        if (allStopped) {
+          setSimulationPaused(true);
+          console.log("🛑 Simulation stopped - all balls at rest");
+        }
+        
+        return updatedBalls;
+      });
+      
+      // Continue animation if simulation is still running
+      animationRef.current = requestAnimationFrame(updatePhysics);
+    };
+    
+    // Start the animation
+    animationRef.current = requestAnimationFrame(updatePhysics);
+    
+    // Cleanup function
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [simulationStarted, simulationPaused, simulationSpeed, showTrajectories]);
+
   // Handle simulation start
   const handlePlaySimulation = () => {
-    setSimulationStarted(true);
-    // Add your simulation logic here
+    if (simulationPaused) {
+      // Resume the simulation
+      setSimulationPaused(false);
+      lastTimeRef.current = performance.now();
+    } else {
+      // Start a new simulation
+      startPoolSimulation();
+    }
     console.log("🎮 Simulation started");
   };
 
   // Handle simulation reset
   const handleResetSimulation = () => {
+    // Cancel any ongoing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+    
     setSimulationStarted(false);
-    // Reset simulation logic
+    setSimulationPaused(false);
+    setSimulationStep(0);
+    setPocketedBalls([]);
+    setBallPositions(JSON.parse(JSON.stringify(initialBallPositions)));
     console.log("🔄 Simulation reset");
   };
+  
+  // Toggle debug info
+  const toggleDebugInfo = () => {
+    setShowDebugInfo(!showDebugInfo);
+  };
+  
+  // Handle simulation speed change
+  const handleSpeedChange = (event, newValue) => {
+    setSimulationSpeed(newValue);
+  };
+  
+  // Toggle trajectory visibility
+  const handleTrajectoryToggle = (event) => {
+    setShowTrajectories(event.target.checked);
+  };
+
+  // Get active ball count (not pocketed)
+  const activeBallCount = ballPositions.filter(ball => !ball.pocketed).length;
 
   return (
     <Box>
@@ -231,7 +604,8 @@ export default function SimulationPage() {
                 justifyContent: 'center',
                 p: 2,
                 minHeight: 400,
-                position: 'relative'
+                position: 'relative',
+                overflow: 'hidden'
               }}>
                 {loading ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -241,81 +615,148 @@ export default function SimulationPage() {
                 ) : error ? (
                   <Typography color="error">{error}</Typography>
                 ) : processedImage ? (
-                  <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                  <div 
+                    ref={containerRef} 
+                    style={{ 
+                      position: 'relative', 
+                      display: 'inline-block', 
+                      width: '100%',
+                      maxHeight: '500px',
+                      overflow: 'hidden'
+                    }}
+                  >
                     <img
                       ref={imageRef}
                       key={processedImage}
                       src={processedImage}
                       alt="Processed Pool Table"
-                      style={{ width: '100%', borderRadius: '8px' }}
+                      style={{ 
+                        width: '100%', 
+                        height: 'auto', 
+                        display: 'block', 
+                        borderRadius: '8px' 
+                      }}
                       onLoad={handleImageLoad}
                       onError={(e) => console.error("❌ Image failed to load:", e.target.src)}
                     />
                     
+                    {/* Render ball positions */}
                     {ballPositions.map((ball, index) => {
-                      // Scale ball display size based on image dimensions
-                      const ballSize = Math.max(18, Math.min(imageSize.width, imageSize.height) / 22);
+                      if (ball.pocketed) return null;
                       
-                      // Color mapping for more vibrant balls
-                      const ballColors = {
-                        'white': '#ffffff',
-                        'black': '#111111',
-                        'red': '#ff0000',
-                        'yellow': '#ffcc00'
-                      };
-                      
-                      // Calculate position percentages based on the game table dimensions
-                      // GAME_TABLE_WIDTH is 800, GAME_TABLE_HEIGHT is 400
-                      const posX = (ball.x / 800) * 100; 
-                      const posY = (ball.y / 400) * 100;
-                      
-                      // Add animation if simulation started
-                      const animationStyle = simulationStarted ? {
-                        animation: `ballMovement${index} 5s linear infinite`,
-                        animationFillMode: 'forwards',
-                      } : {};
+                      // Scale coordinates to match the rendered image size
+                      const scaleX = imageSize.width / TABLE_WIDTH;
+                      const scaleY = imageSize.height / TABLE_HEIGHT;
                       
                       return (
                         <div
                           key={index}
                           style={{
                             position: 'absolute',
-                            top: `${posY}%`,
-                            left: `${posX}%`,
-                            width: `${ballSize}px`,
-                            height: `${ballSize}px`,
-                            backgroundColor: ballColors[ball.color] || '#888',
+                            top: `${ball.y * scaleY}px`,
+                            left: `${ball.x * scaleX}px`,
+                            width: `${BALL_RADIUS * 2 * scaleX}px`,
+                            height: `${BALL_RADIUS * 2 * scaleY}px`,
+                            backgroundColor: ball.color === 'white' ? '#fff' : 
+                                       ball.color === 'black' ? '#000' : 
+                                       ball.color === 'red' ? '#ff0000' : 
+                                       '#ffcc00',
                             borderRadius: '50%',
-                            border: '2px solid #ffffff',
-                            boxShadow: '0px 2px 4px rgba(0,0,0,0.4), inset 0px -2px 4px rgba(0,0,0,0.3)',
                             transform: 'translate(-50%, -50%)',
                             zIndex: 10,
-                            transition: 'all 0.3s ease',
-                            ...animationStyle
+                            boxShadow: '0px 2px 4px rgba(0,0,0,0.3), inset 0px -2px 4px rgba(0,0,0,0.2)',
+                            display: simulationStarted ? 'none' : 'block', // Hide balls when simulation is running (the backend renders them)
                           }}
                         >
-                          {/* Ball number/identification */}
-                          {ball.color !== 'white' && ball.color !== 'black' && (
+                          {(ball.color === 'red' || ball.color === 'yellow') && (
                             <div style={{
                               position: 'absolute',
                               top: '50%',
                               left: '50%',
                               transform: 'translate(-50%, -50%)',
-                              width: `${ballSize * 0.5}px`,
-                              height: `${ballSize * 0.5}px`,
-                              backgroundColor: '#ffffff',
+                              width: '50%',
+                              height: '50%',
+                              backgroundColor: 'white',
                               borderRadius: '50%',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: `${ballSize * 0.3}px`,
+                              fontSize: `${Math.max(8 * scaleX, 8)}px`,
                               fontWeight: 'bold',
-                              color: ball.color === 'yellow' ? '#000' : '#fff',
+                              color: ball.color === 'yellow' ? 'black' : 'red'
                             }}>
-                              {ball.color === 'red' ? '1' : '2'}
+                              {ball.number || index + 1}
                             </div>
                           )}
                         </div>
+                      );
+                    })}
+                    
+                    {/* Render ball trajectories if enabled */}
+                    {showTrajectories && ballPositions.map((ball, index) => {
+                      if (!ball.trajectoryPoints || ball.trajectoryPoints.length < 2) return null;
+                      
+                      const scaleX = imageSize.width / TABLE_WIDTH;
+                      const scaleY = imageSize.height / TABLE_HEIGHT;
+                      
+                      // Create SVG path from trajectory points
+                      let pathData = `M ${ball.trajectoryPoints[0].x * scaleX} ${ball.trajectoryPoints[0].y * scaleY}`;
+                      
+                      ball.trajectoryPoints.forEach((point, i) => {
+                        if (i > 0) {
+                          pathData += ` L ${point.x * scaleX} ${point.y * scaleY}`;
+                        }
+                      });
+                      
+                      return (
+                        <svg
+                          key={`trajectory-${index}`}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            pointerEvents: 'none',
+                            zIndex: 5,
+                          }}
+                        >
+                          <path
+                            d={pathData}
+                            stroke={ball.color === 'white' ? '#888' : 
+                                   ball.color === 'black' ? '#555' : 
+                                   ball.color === 'red' ? '#ff6666' : 
+                                   '#ffdd66'}
+                            strokeWidth="2"
+                            fill="none"
+                            strokeDasharray="3,3"
+                            opacity="0.7"
+                          />
+                        </svg>
+                      );
+                    })}
+                    
+                    {/* Render pocket positions for debugging */}
+                    {showDebugInfo && POCKET_POSITIONS.map((pocket, index) => {
+                      const scaleX = imageSize.width / TABLE_WIDTH;
+                      const scaleY = imageSize.height / TABLE_HEIGHT;
+                      
+                      return (
+                        <div
+                          key={`pocket-${index}`}
+                          style={{
+                            position: 'absolute',
+                            top: `${pocket.y * scaleY}px`,
+                            left: `${pocket.x * scaleX}px`,
+                            width: `${POCKET_RADIUS * 2 * scaleX}px`,
+                            height: `${POCKET_RADIUS * 2 * scaleY}px`,
+                            border: '1px dashed red',
+                            borderRadius: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: 1,
+                            pointerEvents: 'none',
+                          }}
+                        />
                       );
                     })}
                   </div>
@@ -342,16 +783,21 @@ export default function SimulationPage() {
                 <ActionButton 
                   fullWidth
                   sx={{ mb: 2 }}
-                  disabled={simulationStarted || loading || error || !processedImage}
+                  startIcon={<PlayArrowIcon />}
+                  disabled={loading || error || !processedImage || (simulationStarted && !simulationPaused)}
                   onClick={handlePlaySimulation}
+                  color={simulationPaused ? "#4a9c59" : undefined}
                 >
-                  {simulationStarted ? 'Simulation Running...' : 'Play Simulation'}
+                  {simulationStarted ? 
+                    (simulationPaused ? 'Resume Simulation' : 'Simulation Running...') : 
+                    'Start Simulation'}
                 </ActionButton>
                 <ActionButton 
                   fullWidth
                   sx={{ mb: 2 }}
                   color="#4a5568"
-                  disabled={!simulationStarted || loading || error || !processedImage}
+                  startIcon={<RestartAltIcon />}
+                  disabled={loading || error || !processedImage || (!simulationStarted && !simulationPaused)}
                   onClick={handleResetSimulation}
                 >
                   Reset Simulation
@@ -364,6 +810,43 @@ export default function SimulationPage() {
                 >
                   View Results
                 </ActionButton>
+                
+                {/* Simulation speed control */}
+                <Box sx={{ mt: 3, display: 'flex', alignItems: 'center' }}>
+                  <SpeedIcon sx={{ color: '#6930c3', mr: 1 }} />
+                  <Typography variant="body2" sx={{ mr: 2, minWidth: 110 }}>
+                    Simulation Speed: {simulationSpeed}x
+                  </Typography>
+                  <Slider
+                    value={simulationSpeed}
+                    onChange={handleSpeedChange}
+                    aria-labelledby="simulation-speed-slider"
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    sx={{ 
+                      color: '#6930c3',
+                      '& .MuiSlider-thumb': {
+                        '&:hover, &.Mui-focusVisible': {
+                          boxShadow: '0px 0px 0px 8px rgba(105, 48, 195, 0.16)',
+                        },
+                      },
+                    }}
+                  />
+                </Box>
+                
+                {/* Trajectory toggle */}
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      checked={showTrajectories}
+                      onChange={handleTrajectoryToggle}
+                      color="secondary"
+                    />
+                  }
+                  label="Show Ball Trajectories"
+                  sx={{ mt: 1 }}
+                />
               </Box>
             </Card>
             
@@ -373,19 +856,23 @@ export default function SimulationPage() {
               p: 3
             }}>
               <Typography variant="h6" gutterBottom>
-                Ball Detection
+                Ball Information
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <Typography variant="body2">
                   {loading ? 'Detecting balls...' : 
                    error ? 'Ball detection failed' : 
-                   `${ballPositions.length} ball(s) detected`}
+                   `${activeBallCount} active ball(s), ${pocketedBalls.length} pocketed`}
                 </Typography>
-                {!loading && !error && (
+                
+                {!loading && !error && ballPositions.length > 0 && (
                   <Box sx={{ mt: 2 }}>
                     {['white', 'black', 'red', 'yellow'].map(color => {
-                      const count = ballPositions.filter(ball => ball.color === color).length;
-                      if (count > 0) {
+                      const total = ballPositions.filter(ball => ball.color === color).length;
+                      const active = ballPositions.filter(ball => ball.color === color && !ball.pocketed).length;
+                      const pocketed = total - active;
+                      
+                      if (total > 0) {
                         return (
                           <Box key={color} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                             <Box 
@@ -403,7 +890,7 @@ export default function SimulationPage() {
                               }} 
                             />
                             <Typography variant="body2">
-                              {`${color.charAt(0).toUpperCase() + color.slice(1)}: ${count}`}
+                              {`${color.charAt(0).toUpperCase() + color.slice(1)}: ${active} active${pocketed > 0 ? `, ${pocketed} pocketed` : ''}`}
                             </Typography>
                           </Box>
                         );
@@ -413,6 +900,64 @@ export default function SimulationPage() {
                   </Box>
                 )}
               </Box>
+              
+              <Button 
+                variant="text" 
+                size="small" 
+                startIcon={<BugReportIcon />}
+                onClick={toggleDebugInfo}
+                sx={{ mt: 2, color: '#6930c3' }}
+              >
+                {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+              </Button>
+              
+              {showDebugInfo && !loading && (
+                <Box sx={{ mt: 1, p: 2, bgcolor: '#f0f0f0', borderRadius: 1, fontSize: '0.75rem' }}>
+                  <Typography variant="caption" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Debug Info:
+                  </Typography>
+                  <Typography variant="caption" component="div">
+                    Player Level: {playerLevel}
+                  </Typography>
+                  <Typography variant="caption" component="div">
+                    Ball Count: {ballPositions.length}
+                  </Typography>
+                  <Typography variant="caption" component="div">
+                    Active Balls: {activeBallCount}
+                  </Typography>
+                  <Typography variant="caption" component="div">
+                    Pocketed Balls: {pocketedBalls.length}
+                  </Typography>
+                  <Typography variant="caption" component="div">
+                    Simulation Step: {simulationStep}
+                  </Typography>
+                  <Typography variant="caption" component="div">
+                    Rendered Image: {imageSize.width}x{imageSize.height}px
+                  </Typography>
+                  {originalImageSize && (
+                    <Typography variant="caption" component="div">
+                      Original Image: {originalImageSize.width}x{originalImageSize.height}px
+                    </Typography>
+                  )}
+                  {tableBounds && (
+                    <Typography variant="caption" component="div">
+                      Table Bounds: x={tableBounds.x}, y={tableBounds.y}, w={tableBounds.width}, h={tableBounds.height}
+                    </Typography>
+                  )}
+                  {ballPositions.length > 0 && !ballPositions[0].pocketed && (
+                    <Typography variant="caption" component="div">
+                      First Ball: x={Math.round(ballPositions[0].x)}, y={Math.round(ballPositions[0].y)}, 
+                      vx={ballPositions[0].vx.toFixed(2)}, vy={ballPositions[0].vy.toFixed(2)}
+                    </Typography>
+                  )}
+                  {simulationParams && (
+                    <Typography variant="caption" component="div">
+                      Shot Precision: {simulationParams.shotPrecision.toFixed(2)}, 
+                      Hit Strength: {simulationParams.hitStrength.toFixed(2)}
+                    </Typography>
+                  )}
+                </Box>
+              )}
             </Card>
           </Grid>
         </Grid>

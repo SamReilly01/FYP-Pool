@@ -8,9 +8,21 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import { styled } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
 
 // Icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import SportsIcon from '@mui/icons-material/Sports';
+import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 
 // Styled components - same as HomePage.jsx
 const Header = styled(Box)(({ theme }) => ({
@@ -81,6 +93,39 @@ const SubHeading = styled(Typography)(({ theme }) => ({
   maxWidth: '500px',
 }));
 
+// New styled components for the dialog
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+  '& .MuiDialog-paper': {
+    borderRadius: theme.spacing(3),
+    padding: theme.spacing(2),
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+    maxWidth: 500,
+  },
+}));
+
+const DialogHeader = styled(DialogTitle)(({ theme }) => ({
+  background: 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
+  color: 'white',
+  padding: theme.spacing(3),
+  borderRadius: '16px 16px 0 0',
+  textAlign: 'center',
+}));
+
+const LevelCard = styled(Box)(({ theme, selected }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  padding: theme.spacing(2),
+  borderRadius: theme.spacing(2),
+  border: selected ? '2px solid #6930c3' : '2px solid transparent',
+  backgroundColor: selected ? 'rgba(105, 48, 195, 0.1)' : 'transparent',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: selected ? 'rgba(105, 48, 195, 0.15)' : 'rgba(0, 0, 0, 0.04)',
+  },
+}));
+
 export default function UploadPage() {
   const location = useLocation();
   const path = location.pathname;
@@ -92,6 +137,10 @@ export default function UploadPage() {
   // State for image upload
   const [image, setImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  
+  // New state for player level dialog
+  const [levelDialogOpen, setLevelDialogOpen] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState('intermediate');
   
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -107,9 +156,24 @@ export default function UploadPage() {
       return;
     }
 
+    // Open the player level selection dialog instead of proceeding immediately
+    setLevelDialogOpen(true);
+  };
+  
+  const handleLevelSelection = (level) => {
+    // Set the selected level
+    setSelectedLevel(level);
+  };
+  
+  const handleLevelConfirm = async () => {
+    // Close the dialog
+    setLevelDialogOpen(false);
+    
     try {
       const formData = new FormData();
       formData.append('image', imageFile);
+      // Add the selected level to form data
+      formData.append('playerLevel', selectedLevel);
 
       const response = await fetch('http://localhost:5000/api/image/upload', {
         method: 'POST',
@@ -124,10 +188,12 @@ export default function UploadPage() {
       const result = await response.json();
       console.log('✅ Image uploaded successfully:', result);
       
+      // Store level and image path in localStorage
       localStorage.setItem('uploadedImagePath', result.image_url);
+      localStorage.setItem('playerLevel', selectedLevel);
       navigate('/simulation');
     } catch (err) {
-      console.error('❌ Error in handleProceed:', err);
+      console.error('❌ Error in handleLevelConfirm:', err);
       alert('An error occurred while uploading the image.');
     }
   };
@@ -260,6 +326,91 @@ export default function UploadPage() {
           </Grid>
         </Grid>
       </Container>
+      
+      {/* Player Level Selection Dialog */}
+      <StyledDialog
+        open={levelDialogOpen}
+        onClose={() => setLevelDialogOpen(false)}
+        aria-labelledby="player-level-dialog-title"
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogHeader id="player-level-dialog-title">
+          <Typography variant="h5" component="div">
+            What's your Pool Playing Level?
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, opacity: 0.8 }}>
+            We'll adjust our simulation and recommendations based on your skill level
+          </Typography>
+        </DialogHeader>
+        
+        <DialogContent sx={{ p: 4 }}>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={4}>
+              <LevelCard 
+                selected={selectedLevel === 'beginner'}
+                onClick={() => handleLevelSelection('beginner')}
+              >
+                <EmojiObjectsIcon sx={{ fontSize: 40, color: '#ff9f1c', mb: 1 }} />
+                <Typography variant="h6" gutterBottom align="center">
+                  Beginner
+                </Typography>
+                <Typography variant="body2" color="textSecondary" align="center">
+                  New to the game or play occasionally
+                </Typography>
+              </LevelCard>
+            </Grid>
+            
+            <Grid item xs={12} sm={4}>
+              <LevelCard 
+                selected={selectedLevel === 'intermediate'}
+                onClick={() => handleLevelSelection('intermediate')}
+              >
+                <SportsIcon sx={{ fontSize: 40, color: '#6930c3', mb: 1 }} />
+                <Typography variant="h6" gutterBottom align="center">
+                  Intermediate
+                </Typography>
+                <Typography variant="body2" color="textSecondary" align="center">
+                  Play regularly with good understanding of the game
+                </Typography>
+              </LevelCard>
+            </Grid>
+            
+            <Grid item xs={12} sm={4}>
+              <LevelCard 
+                selected={selectedLevel === 'expert'}
+                onClick={() => handleLevelSelection('expert')}
+              >
+                <EmojiEventsIcon sx={{ fontSize: 40, color: '#e63946', mb: 1 }} />
+                <Typography variant="h6" gutterBottom align="center">
+                  Expert
+                </Typography>
+                <Typography variant="body2" color="textSecondary" align="center">
+                  Competitive player with advanced skills
+                </Typography>
+              </LevelCard>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, justifyContent: 'center' }}>
+          <Button 
+            onClick={() => setLevelDialogOpen(false)}
+            sx={{ 
+              color: '#6930c3', 
+              borderRadius: 5,
+              px: 3,
+              mr: 2,
+              border: '1px solid #6930c3'
+            }}
+          >
+            Cancel
+          </Button>
+          <ActionButton onClick={handleLevelConfirm}>
+            Confirm & Continue
+          </ActionButton>
+        </DialogActions>
+      </StyledDialog>
     </Box>
   );
 }
