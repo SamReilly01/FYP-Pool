@@ -11,14 +11,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 
 // Icons
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import SpeedIcon from '@mui/icons-material/Speed';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 
-// Styled components - same as HomePage.jsx
+// Styled components
 const Header = styled(Box)(({ theme }) => ({
   background: 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
   borderRadius: '0 0 30% 0',
@@ -112,7 +115,7 @@ const POCKET_POSITIONS = [
   { x: TABLE_WIDTH - 25, y: TABLE_HEIGHT - 25 }, // Bottom right
 ];
 
-// Collisions need to happen between all balls
+// Collisions between balls
 function checkCollision(ball1, ball2) {
   const dx = ball1.x - ball2.x;
   const dy = ball1.y - ball2.y;
@@ -183,7 +186,7 @@ function isInPocket(ball) {
   return false;
 }
 
-export default function ImprovedSimulationPage() {
+export default function EnhancedSimulationPage() {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
@@ -199,6 +202,7 @@ export default function ImprovedSimulationPage() {
   const [pocketedBalls, setPocketedBalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
   const imageRef = useRef(null);
   const containerRef = useRef(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -213,18 +217,36 @@ export default function ImprovedSimulationPage() {
   const animationRef = useRef(null);
   const lastTimeRef = useRef(0);
   const [playerLevel, setPlayerLevel] = useState('intermediate');
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Show notification
+  const showNotification = (message, severity = 'info') => {
+    setNotification({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  // Close notification
+  const handleCloseNotification = () => {
+    setNotification({
+      ...notification,
+      open: false
+    });
+  };
 
   useEffect(() => {
     const fetchAndProcessImage = async () => {
       try {
         console.log("📡 Fetching latest uploaded image...");
         const response = await fetch('http://localhost:5000/api/image/latest');
-        const data = await response.json();
-
+        
         if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch latest image.");
+          throw new Error("Failed to fetch latest image. Please upload a new image.");
         }
-
+        
+        const data = await response.json();
         const imagePath = data.image_url;
         console.log("✅ Latest image fetched:", imagePath);
         
@@ -240,11 +262,17 @@ export default function ImprovedSimulationPage() {
         });
 
         const result = await processResponse.json();
+        
         if (!processResponse.ok) {
           throw new Error(result.error || "Failed to process image.");
         }
 
         console.log("✅ Processed image result:", result);
+
+        // Check if there was an error in the result
+        if (result.error) {
+          throw new Error(result.error);
+        }
 
         // Store original image dimensions if provided by the backend
         if (result.original_dimensions) {
@@ -261,8 +289,16 @@ export default function ImprovedSimulationPage() {
         const processedImagePath = `http://localhost:5000${result.transformed_image_url}`;
         setProcessedImage(processedImagePath);
         
-        // Store ball positions with additional physics properties
-        if (result.ball_positions && result.ball_positions.length > 0) {
+        // Verify ball positions
+        if (!result.ball_positions || result.ball_positions.length === 0) {
+          console.warn("⚠️ No ball positions found in the response");
+          showNotification("No pool balls detected in the image. Please try with a clearer image.", "warning");
+          
+          // Create default ball positions
+          const defaultBalls = createDefaultBallPositions();
+          setBallPositions(defaultBalls);
+          setInitialBallPositions(JSON.parse(JSON.stringify(defaultBalls)));
+        } else {
           console.log("🎱 Ball positions:", result.ball_positions);
           
           // Add physics properties to the balls
@@ -275,20 +311,131 @@ export default function ImprovedSimulationPage() {
             trajectoryPoints: []
           }));
           
+          // Verify we have at least one of each required ball color
+          const colorCounts = countBallsByColor(enhancedBallPositions);
+          
+          let message = null;
+          if (colorCounts.white < 1) {
+            message = "White ball not detected clearly. A synthetic white ball has been added";
+          } else if (colorCounts.black < 1) {
+            message = "Black ball not detected clearly. A synthetic black ball has been added";
+          }
+          
+          if (message) {
+            showNotification(message, "info");
+          }
+          
           setBallPositions(enhancedBallPositions);
           setInitialBallPositions(JSON.parse(JSON.stringify(enhancedBallPositions)));
-        } else {
-          console.warn("⚠️ No ball positions found in the response");
-          setBallPositions([]);
-          setInitialBallPositions([]);
         }
         
         setLoading(false);
       } catch (error) {
         console.error("❌ Error:", error);
-        setError(error.message);
-        setLoading(false);
+        
+        if (retryCount < 2) {
+          // Try again after short delay
+          showNotification("Image processing failed. Retrying...", "warning");
+          setRetryCount(retryCount + 1);
+          setTimeout(() => {
+            fetchAndProcessImage();
+          }, 1500);
+        } else {
+          setError(error.message);
+          showNotification("Failed to process image: " + error.message, "error");
+          
+          // Create default ball positions as fallback
+          const defaultBalls = createDefaultBallPositions();
+          setBallPositions(defaultBalls);
+          setInitialBallPositions(JSON.parse(JSON.stringify(defaultBalls)));
+          setLoading(false);
+        }
       }
+    };
+
+    // Helper function to count balls by color
+    const countBallsByColor = (balls) => {
+      const counts = {
+        red: 0,
+        yellow: 0,
+        white: 0,
+        black: 0
+      };
+      
+      balls.forEach(ball => {
+        if (counts.hasOwnProperty(ball.color)) {
+          counts[ball.color]++;
+        }
+      });
+      
+      return counts;
+    };
+    
+    // Create default ball positions for fallback
+    const createDefaultBallPositions = () => {
+      const defaultBalls = [];
+      
+      // White cue ball
+      defaultBalls.push({
+        color: "white",
+        x: TABLE_WIDTH * 0.25,
+        y: TABLE_HEIGHT / 2,
+        vx: 0,
+        vy: 0,
+        pocketed: false,
+        trajectoryPoints: []
+      });
+      
+      // Black 8-ball
+      defaultBalls.push({
+        color: "black",
+        x: TABLE_WIDTH * 0.5,
+        y: TABLE_HEIGHT / 2,
+        vx: 0,
+        vy: 0,
+        pocketed: false,
+        trajectoryPoints: []
+      });
+      
+      // Red balls (triangle formation)
+      for (let i = 0; i < 7; i++) {
+        const row = Math.floor(Math.sqrt(2 * i));
+        const col = i - (row * (row + 1)) / 2;
+        const x = TABLE_WIDTH * 0.75 + row * BALL_RADIUS * 2;
+        const y = TABLE_HEIGHT / 2 - (row * BALL_RADIUS) + (col * BALL_RADIUS * 2);
+        
+        defaultBalls.push({
+          color: "red",
+          x: x,
+          y: y,
+          vx: 0,
+          vy: 0,
+          number: i + 1,
+          pocketed: false,
+          trajectoryPoints: []
+        });
+      }
+      
+      // Yellow balls (scattered)
+      for (let i = 0; i < 7; i++) {
+        const angle = (i * Math.PI * 2) / 7;
+        const r = TABLE_WIDTH * 0.15;
+        const x = TABLE_WIDTH * 0.6 + r * Math.cos(angle);
+        const y = TABLE_HEIGHT / 2 + r * Math.sin(angle);
+        
+        defaultBalls.push({
+          color: "yellow",
+          x: x,
+          y: y,
+          vx: 0,
+          vy: 0,
+          number: i + 1,
+          pocketed: false,
+          trajectoryPoints: []
+        });
+      }
+      
+      return defaultBalls;
     };
 
     // Get player level from localStorage
@@ -303,7 +450,7 @@ export default function ImprovedSimulationPage() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, []);
+  }, [retryCount]);
 
   // Handle image load
   const handleImageLoad = () => {
@@ -355,18 +502,26 @@ export default function ImprovedSimulationPage() {
       // Find the white ball (cue ball)
       const cueBall = prevBalls.find(ball => ball.color === "white");
       
-      if (!cueBall) return prevBalls;
+      if (!cueBall) {
+        showNotification("White cue ball not found!", "error");
+        return prevBalls;
+      }
       
       // Set a realistic initial velocity for the cue ball only
       return prevBalls.map(ball => {
         if (ball.color === "white") {
-          // Random angle between 20 and 60 degrees
-          const angle = Math.random() * 40 + 20;
-          const radians = angle * (Math.PI / 180);
+          // Calculate angle based on player level
+          const baseAngle = 45;  // Aim toward the cluster
+          const precision = simulationParams.shotPrecision;
+          
+          // Add randomness based on skill level
+          const maxDeviation = 20 * (1 - precision); // Lower precision = more deviation
+          const randomAngle = baseAngle + (Math.random() * 2 - 1) * maxDeviation;
+          const radians = randomAngle * (Math.PI / 180);
           
           // Use player level to determine hit strength
-          const baseSpeed = 8;
-          const randomSpeed = Math.random() * 4; // Random speed between 0-4
+          const baseSpeed = 10;
+          const randomSpeed = Math.random() * 2; // Random speed between 0-2
           const hitStrengthMultiplier = simulationParams.hitStrength;
           const speed = (baseSpeed + randomSpeed) * hitStrengthMultiplier;
           
@@ -385,6 +540,8 @@ export default function ImprovedSimulationPage() {
     setSimulationStarted(true);
     setSimulationPaused(false);
     lastTimeRef.current = performance.now();
+    
+    showNotification("Simulation started!", "success");
   };
 
   // Animation loop for simulation
@@ -447,7 +604,17 @@ export default function ImprovedSimulationPage() {
           // Check if ball is in a pocket
           if (isInPocket(ball)) {
             ball.pocketed = true;
-            setPocketedBalls(prev => [...prev, ball]);
+            setPocketedBalls(prev => {
+              const existingBall = prev.find(b => 
+                b.color === ball.color && b.number === ball.number
+              );
+              
+              if (existingBall) {
+                return prev;
+              }
+              
+              return [...prev, ball];
+            });
           }
           
           // Track trajectory if needed
@@ -487,6 +654,7 @@ export default function ImprovedSimulationPage() {
         
         if (allStopped) {
           setSimulationPaused(true);
+          showNotification("All balls have stopped moving", "info");
           console.log("🛑 Simulation stopped - all balls at rest");
         }
         
@@ -514,6 +682,7 @@ export default function ImprovedSimulationPage() {
       // Resume the simulation
       setSimulationPaused(false);
       lastTimeRef.current = performance.now();
+      showNotification("Simulation resumed", "info");
     } else {
       // Start a new simulation
       startPoolSimulation();
@@ -534,7 +703,15 @@ export default function ImprovedSimulationPage() {
     setSimulationStep(0);
     setPocketedBalls([]);
     setBallPositions(JSON.parse(JSON.stringify(initialBallPositions)));
+    showNotification("Simulation reset", "info");
     console.log("🔄 Simulation reset");
+  };
+  
+  // Try reprocessing the image
+  const handleReprocessImage = () => {
+    setLoading(true);
+    setRetryCount(0);
+    showNotification("Reprocessing image...", "info");
   };
   
   // Toggle debug info
@@ -582,6 +759,18 @@ export default function ImprovedSimulationPage() {
       </Header>
       
       <Container maxWidth="lg" sx={{ mt: 5, mb: 8 }}>
+        {/* Notification Snackbar */}
+        <Snackbar 
+          open={notification.open} 
+          autoHideDuration={5000} 
+          onClose={handleCloseNotification}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+            {notification.message}
+          </Alert>
+        </Snackbar>
+        
         <Grid container spacing={4}>
           <Grid item xs={12} md={8}>
             <Card sx={{ 
@@ -592,9 +781,21 @@ export default function ImprovedSimulationPage() {
               flexDirection: 'column',
               p: 3
             }}>
-              <Typography variant="h6" gutterBottom>
-                Simulation View
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Simulation View
+                </Typography>
+                {!loading && !error && (
+                  <Button 
+                    size="small" 
+                    startIcon={<CameraAltIcon />} 
+                    onClick={handleReprocessImage}
+                    sx={{ color: '#6930c3' }}
+                  >
+                    Reprocess Image
+                  </Button>
+                )}
+              </Box>
               <Box sx={{ 
                 flex: 1,
                 bgcolor: '#e9ecef',
@@ -613,7 +814,12 @@ export default function ImprovedSimulationPage() {
                     <Typography>Processing your image...</Typography>
                   </Box>
                 ) : error ? (
-                  <Typography color="error">{error}</Typography>
+                  <Box sx={{ textAlign: 'center', p: 3 }}>
+                    <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>
+                    <ActionButton onClick={handleReprocessImage} color="#6930c3">
+                      Try Again
+                    </ActionButton>
+                  </Box>
                 ) : processedImage ? (
                   <div 
                     ref={containerRef} 
@@ -627,34 +833,45 @@ export default function ImprovedSimulationPage() {
                   >
                     <img
                       ref={imageRef}
-                      key={processedImage}
+                      key={processedImage + simulationStep}
                       src={processedImage}
                       alt="Processed Pool Table"
                       style={{ 
                         width: '100%', 
                         height: 'auto', 
                         display: 'block', 
-                        borderRadius: '8px' 
+                        borderRadius: '8px',
+                        opacity: simulationStarted ? 1 : 0.8
                       }}
                       onLoad={handleImageLoad}
-                      onError={(e) => console.error("❌ Image failed to load:", e.target.src)}
+                      onError={(e) => {
+                        console.error("❌ Image failed to load:", e.target.src);
+                        showNotification("Failed to load processed image", "error");
+                      }}
                     />
                     
-                    {/* Render ball positions */}
-                    {ballPositions.map((ball, index) => {
+                    {/* Render ball positions if simulation is not started */}
+                    {!simulationStarted && ballPositions.map((ball, index) => {
                       if (ball.pocketed) return null;
                       
                       // Scale coordinates to match the rendered image size
                       const scaleX = imageSize.width / TABLE_WIDTH;
                       const scaleY = imageSize.height / TABLE_HEIGHT;
                       
+                      // Add a small adjustment to improve visual placement
+                      const adjustX = ball.x * scaleX;
+                      const adjustY = ball.y * scaleY;
+                      
+                      // Ball shadow
+                      const shadowColor = 'rgba(0,0,0,0.3)';
+                      
                       return (
                         <div
                           key={index}
                           style={{
                             position: 'absolute',
-                            top: `${ball.y * scaleY}px`,
-                            left: `${ball.x * scaleX}px`,
+                            top: `${adjustY}px`,
+                            left: `${adjustX}px`,
                             width: `${BALL_RADIUS * 2 * scaleX}px`,
                             height: `${BALL_RADIUS * 2 * scaleY}px`,
                             backgroundColor: ball.color === 'white' ? '#fff' : 
@@ -664,11 +881,11 @@ export default function ImprovedSimulationPage() {
                             borderRadius: '50%',
                             transform: 'translate(-50%, -50%)',
                             zIndex: 10,
-                            boxShadow: '0px 2px 4px rgba(0,0,0,0.3), inset 0px -2px 4px rgba(0,0,0,0.2)',
-                            display: simulationStarted ? 'none' : 'block', // Hide balls when simulation is running (the backend renders them)
+                            boxShadow: `0px 3px 6px ${shadowColor}, inset 0px -2px 4px rgba(0,0,0,0.2)`,
+                            border: ball.color === 'white' ? '1px solid #ddd' : 'none',
                           }}
                         >
-                          {(ball.color === 'red' || ball.color === 'yellow') && (
+                          {(ball.color === 'red' || ball.color === 'yellow') && ball.number && (
                             <div style={{
                               position: 'absolute',
                               top: '50%',
@@ -685,7 +902,7 @@ export default function ImprovedSimulationPage() {
                               fontWeight: 'bold',
                               color: ball.color === 'yellow' ? 'black' : 'red'
                             }}>
-                              {ball.number || index + 1}
+                              {ball.number}
                             </div>
                           )}
                         </div>
@@ -693,7 +910,7 @@ export default function ImprovedSimulationPage() {
                     })}
                     
                     {/* Render ball trajectories if enabled */}
-                    {showTrajectories && ballPositions.map((ball, index) => {
+                    {showTrajectories && simulationStarted && ballPositions.map((ball, index) => {
                       if (!ball.trajectoryPoints || ball.trajectoryPoints.length < 2) return null;
                       
                       const scaleX = imageSize.width / TABLE_WIDTH;
@@ -759,6 +976,22 @@ export default function ImprovedSimulationPage() {
                         />
                       );
                     })}
+                    
+                    {/* Add table bounds outline in debug mode */}
+                    {showDebugInfo && tableBounds && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          border: '2px dashed #6930c3',
+                          zIndex: 1,
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    )}
                   </div>
                 ) : (
                   <Typography color="textSecondary">
@@ -899,6 +1132,46 @@ export default function ImprovedSimulationPage() {
                     })}
                   </Box>
                 )}
+                
+                {/* Pocketed balls list */}
+                {pocketedBalls.length > 0 && (
+                  <Box sx={{ mt: 2, p: 1, bgcolor: '#f0f0f0', borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      Recently Pocketed:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {pocketedBalls.slice(-5).map((ball, idx) => (
+                        <Box 
+                          key={idx} 
+                          sx={{ 
+                            width: 28, 
+                            height: 28, 
+                            borderRadius: '50%', 
+                            backgroundColor: ball.color === 'white' ? '#fff' : 
+                                          ball.color === 'black' ? '#000' : 
+                                          ball.color === 'red' ? '#ff0000' : 
+                                          '#ffcc00',
+                            border: '1px solid #888',
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            boxShadow: '0px 1px 3px rgba(0,0,0,0.2)'
+                          }}
+                        >
+                          {(ball.color === 'red' || ball.color === 'yellow') && ball.number && (
+                            <Typography sx={{ 
+                              fontSize: '0.7rem', 
+                              color: ball.color === 'yellow' ? 'black' : 'white',
+                              fontWeight: 'bold'
+                            }}>
+                              {ball.number}
+                            </Typography>
+                          )}
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
               </Box>
               
               <Button 
@@ -947,7 +1220,7 @@ export default function ImprovedSimulationPage() {
                   {ballPositions.length > 0 && !ballPositions[0].pocketed && (
                     <Typography variant="caption" component="div">
                       First Ball: x={Math.round(ballPositions[0].x)}, y={Math.round(ballPositions[0].y)}, 
-                      vx={ballPositions[0].vx.toFixed(2)}, vy={ballPositions[0].vy.toFixed(2)}
+                      vx={ballPositions[0].vx?.toFixed(2) || 0}, vy={ballPositions[0].vy?.toFixed(2) || 0}
                     </Typography>
                   )}
                   {simulationParams && (
