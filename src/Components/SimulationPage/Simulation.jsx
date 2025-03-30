@@ -230,6 +230,10 @@ function isInPocket(ball) {
   return false;
 }
 
+// Add these default dimensions
+const DEFAULT_TABLE_WIDTH = 800;
+const DEFAULT_TABLE_HEIGHT = 400;
+
 export default function EnhancedSimulationPage() {
   const location = useLocation();
   const path = location.pathname;
@@ -464,7 +468,7 @@ export default function EnhancedSimulationPage() {
         const y = TABLE_HEIGHT / 2 - (row * BALL_RADIUS) + (col * BALL_RADIUS * 2);
 
         defaultBalls.push({
-          id: `ball_red_${i+1}`,
+          id: `ball_red_${i + 1}`,
           color: "red",
           x: x,
           y: y,
@@ -484,7 +488,7 @@ export default function EnhancedSimulationPage() {
         const y = TABLE_HEIGHT / 2 + r * Math.sin(angle);
 
         defaultBalls.push({
-          id: `ball_yellow_${i+1}`,
+          id: `ball_yellow_${i + 1}`,
           color: "yellow",
           x: x,
           y: y,
@@ -513,26 +517,53 @@ export default function EnhancedSimulationPage() {
     };
   }, [retryCount]);
 
-  // Handle image load
+  // Modify the handleImageLoad function
   const handleImageLoad = () => {
     if (imageRef.current && containerRef.current) {
-      // Get the rendered dimensions
-      const renderedWidth = imageRef.current.clientWidth;
-      const renderedHeight = imageRef.current.clientHeight;
-      
-      // Log dimensions for debugging
-      console.log("📏 Image natural dimensions:", imageRef.current.naturalWidth, imageRef.current.naturalHeight);
-      console.log("📏 Container dimensions:", containerRef.current.clientWidth, containerRef.current.clientHeight);
-      console.log("📏 Rendered image dimensions:", renderedWidth, renderedHeight);
+      try {
+        // Get the natural dimensions
+        const naturalWidth = imageRef.current.naturalWidth;
+        const naturalHeight = imageRef.current.naturalHeight;
 
-      // Store the rendered image size
-      setImageSize({
-        width: containerRef.current.clientWidth,
-        height: renderedHeight
-      });
+        if (!naturalWidth || !naturalHeight) {
+          throw new Error('Image dimensions not available');
+        }
 
-      console.log("📏 Image loaded - Set Dimensions:", containerRef.current.clientWidth, renderedHeight);
+        // Calculate aspect ratio
+        const aspectRatio = naturalWidth / naturalHeight;
+
+        // Get container width
+        const containerWidth = containerRef.current.clientWidth;
+
+        // Calculate height maintaining aspect ratio
+        const calculatedHeight = containerWidth / aspectRatio;
+
+        // Set dimensions
+        setImageSize({
+          width: containerWidth,
+          height: calculatedHeight
+        });
+
+        console.log("📏 Image loaded successfully with dimensions:", containerWidth, calculatedHeight);
+      } catch (error) {
+        console.warn("⚠️ Error loading image, using default dimensions");
+        setImageSize({
+          width: DEFAULT_TABLE_WIDTH,
+          height: DEFAULT_TABLE_HEIGHT
+        });
+        showNotification("Using default table dimensions", "warning");
+      }
     }
+  };
+
+  // Add an error handler for the image
+  const handleImageError = () => {
+    console.error("❌ Failed to load image");
+    setImageSize({
+      width: DEFAULT_TABLE_WIDTH,
+      height: DEFAULT_TABLE_HEIGHT
+    });
+    showNotification("Failed to load table image, using default dimensions", "error");
   };
 
   // Function to get simulation parameters based on player level
@@ -847,7 +878,7 @@ export default function EnhancedSimulationPage() {
 
   // Try reprocessing the image
   const handleReprocessImage = () => {
-    setLoading(true); 
+    setLoading(true);
     setRetryCount(0);
     showNotification("Reprocessing image...", "info");
   };
@@ -972,22 +1003,17 @@ export default function EnhancedSimulationPage() {
                     <img
                       ref={imageRef}
                       src={processedImage}
-                      alt="Processed Pool Table"
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        borderRadius: '8px',
-                        opacity: simulationStarted ? 1 : 0.8
-                      }}
                       onLoad={handleImageLoad}
-                      onError={(e) => {
-                        console.error("❌ Image failed to load:", e.target.src);
-                        showNotification("Failed to load processed image", "error");
+                      onError={handleImageError}
+                      alt="Pool Table"
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        maxWidth: imageSize.width,
+                        maxHeight: imageSize.height
                       }}
+                      //onLoad={handleImageLoad}
+                      //onError={handleImageError}
                     />
 
                     {/* Render ball positions during simulation */}
@@ -1014,10 +1040,10 @@ export default function EnhancedSimulationPage() {
                             left: `${adjustX}px`,
                             width: `${BALL_RADIUS * 2 * scaleX}px`,
                             height: `${BALL_RADIUS * 2 * scaleY}px`,
-                            backgroundColor: ball.color === 'white' ? '#fff' : 
-                                         ball.color === 'black' ? '#000' : 
-                                         ball.color === 'red' ? '#ff0000' : 
-                                         '#ffcc00',
+                            backgroundColor: ball.color === 'white' ? '#fff' :
+                              ball.color === 'black' ? '#000' :
+                                ball.color === 'red' ? '#ff0000' :
+                                  '#ffcc00',
                             borderRadius: '50%',
                             transform: 'translate(-50%, -50%)',
                             zIndex: 50, // Higher zIndex to ensure balls appear above the table
