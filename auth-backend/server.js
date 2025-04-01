@@ -5,6 +5,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/upload');
 const imageProcessingRoutes = require('./routes/imageProcessing');
+const resultsRoutes = require('./routes/results');
 const path = require('path'); // Ensure path is required
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use('/api', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/image', imageProcessingRoutes);
+app.use('/api/results', resultsRoutes);
 
 // ✅ Debugging log
 app.use((req, res, next) => {

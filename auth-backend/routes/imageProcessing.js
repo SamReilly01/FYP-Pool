@@ -58,6 +58,7 @@ if (!fs.existsSync(debugDir)) {
 // Image Upload Route with better error handling
 router.post('/upload', upload.single('image'), async (req, res) => {
   console.log('📥 Image received for upload:', req.file);
+  console.log('Request body:', req.body); // Log the entire request body for debugging
 
   if (!req.file) {
     console.error('❌ No file uploaded.');
@@ -66,17 +67,32 @@ router.post('/upload', upload.single('image'), async (req, res) => {
 
   // Get the player level from the request
   const playerLevel = req.body.playerLevel || 'intermediate';
+  // Get user_id from request body
+  const user_id = req.body.user_id;
+  
   console.log('👤 Player level:', playerLevel);
+  console.log('👤 User ID:', user_id);
 
   try {
     const imageUrl = `/uploads/${req.file.filename}`;
     console.log('✅ Image successfully uploaded:', imageUrl);
 
     // Store the uploaded image and player level in the database
-    await db.query(
-      `INSERT INTO uploaded_images (image_url, uploaded_at, player_level) VALUES ($1, NOW(), $2)`,
-      [imageUrl, playerLevel]
-    );
+    // Check if user_id exists, if not, use NULL
+    if (user_id) {
+      await db.query(
+        `INSERT INTO uploaded_images (user_id, image_url, uploaded_at, player_level) 
+         VALUES ($1, $2, NOW(), $3)`,
+        [user_id, imageUrl, playerLevel]
+      );
+    } else {
+      // Insert without user_id (will be NULL)
+      await db.query(
+        `INSERT INTO uploaded_images (image_url, uploaded_at, player_level) 
+         VALUES ($1, NOW(), $2)`,
+        [imageUrl, playerLevel]
+      );
+    }
 
     res.json({
       message: 'Image uploaded successfully',

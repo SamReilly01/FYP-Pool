@@ -24,6 +24,9 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import SportsIcon from '@mui/icons-material/Sports';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 
+
+const user_id = localStorage.getItem('user_id');
+
 // Styled components - same as HomePage.jsx
 const Header = styled(Box)(({ theme }) => ({
   background: 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
@@ -142,6 +145,11 @@ export default function UploadPage() {
   const [levelDialogOpen, setLevelDialogOpen] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('intermediate');
   
+  // Add the missing handleLevelSelection function
+  const handleLevelSelection = (level) => {
+    setSelectedLevel(level);
+  };
+  
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -155,14 +163,9 @@ export default function UploadPage() {
       alert('Please upload an image first.');
       return;
     }
-
+  
     // Open the player level selection dialog instead of proceeding immediately
     setLevelDialogOpen(true);
-  };
-  
-  const handleLevelSelection = (level) => {
-    // Set the selected level
-    setSelectedLevel(level);
   };
   
   const handleLevelConfirm = async () => {
@@ -170,21 +173,28 @@ export default function UploadPage() {
     setLevelDialogOpen(false);
     
     try {
+      // Get user_id from localStorage
+      const userId = localStorage.getItem('user_id');
+      
       const formData = new FormData();
       formData.append('image', imageFile);
       // Add the selected level to form data
       formData.append('playerLevel', selectedLevel);
-
+      // Add user_id to form data if available
+      if (userId) {
+        formData.append('user_id', userId);
+      }
+  
       const response = await fetch('http://localhost:5000/api/image/upload', {
         method: 'POST',
         body: formData,
       });
-
+  
       if (!response.ok) {
         const error = await response.text();
         throw new Error(error);
       }
-
+  
       const result = await response.json();
       console.log('✅ Image uploaded successfully:', result);
       
