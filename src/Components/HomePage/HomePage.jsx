@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -7,7 +7,7 @@ import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import { styled } from '@mui/material/styles';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Icons
 import HomeIcon from '@mui/icons-material/Home';
@@ -18,13 +18,9 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import InfoIcon from '@mui/icons-material/Info';
 import LogoutIcon from '@mui/icons-material/Logout';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CameraIcon from '@mui/icons-material/Camera';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CodeIcon from '@mui/icons-material/Code';
 import MobileScreenShareIcon from '@mui/icons-material/MobileScreenShare';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
-import ViewInArIcon from '@mui/icons-material/ViewInAr';
 
 // Styled components
 const Header = styled(Box)(({ theme }) => ({
@@ -65,30 +61,6 @@ const NavLink = styled(Button)(({ theme, active }) => ({
   '&:hover': {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-}));
-
-const FeatureCard = styled(Card)(({ theme, bgcolor }) => ({
-  height: '100%',
-  backgroundColor: bgcolor || '#f2a365',
-  color: 'white',
-  borderRadius: theme.spacing(2),
-  textAlign: 'center',
-  transition: 'transform 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-5px)',
-  },
-}));
-
-const FeatureIcon = styled(Box)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  borderRadius: '50%',
-  width: 60,
-  height: 60,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  margin: '0 auto',
-  marginBottom: theme.spacing(2),
 }));
 
 const ActionButton = styled(Button)(({ theme, color }) => ({
@@ -134,20 +106,57 @@ const SectionHeading = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(3),
 }));
 
-export default function PoolGameUI() {
+const FeatureCard = styled(Card)(({ theme, bgcolor }) => ({
+  height: '100%',
+  backgroundColor: bgcolor || '#f2a365',
+  color: 'white',
+  borderRadius: theme.spacing(2),
+  textAlign: 'center',
+  transition: 'transform 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+  },
+}));
+
+const FeatureIcon = styled(Box)(({ theme }) => ({
+  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  borderRadius: '50%',
+  width: 60,
+  height: 60,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  margin: '0 auto',
+  marginBottom: theme.spacing(2),
+}));
+
+export default function HomePage() {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
+  const [userName, setUserName] = useState('');
   
   // Function to check active route
   const isActive = (route) => path === route;
   
-  // Generate feature cards for the home page
+  // Extract username from email on component mount
+  useEffect(() => {
+    const email = localStorage.getItem('userEmail');
+    if (email) {
+      // Extract the part before @
+      const name = email.split('@')[0];
+      // Capitalize the first letter
+      const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+      setUserName(formattedName);
+    }
+  }, []);
+
+  // Features for the main cards
   const featureCards = [
     {
       title: 'Upload Image',
       description: 'Take a picture or upload an existing image of your pool table',
-      icon: <CameraIcon fontSize="large" />,
+      icon: <CameraAltIcon fontSize="large" />,
       color: '#f2a365',
       route: '/upload'
     },
@@ -164,207 +173,144 @@ export default function PoolGameUI() {
       icon: <MobileScreenShareIcon fontSize="large" />,
       color: '#6930c3',
       route: '/results'
-    },
+    }
+  ];
+
+  // Settings, Help, and About features for the bottom section
+  const additionalFeatures = [
     {
-      title: 'Real-time Tracking',
-      description: 'Advanced ball tracking and physics simulation for realistic play',
-      icon: <AccessTimeIcon fontSize="large" />,
+      title: 'Settings',
+      description: 'Customize your experience and account preferences',
+      icon: <SettingsIcon fontSize="large" />,
       color: '#3a86ff',
       route: '/settings'
     },
     {
-      title: 'Mobile Access',
-      description: 'Take your pool game analysis anywhere with our mobile app',
-      icon: <DeveloperModeIcon fontSize="large" />,
+      title: 'Help Center',
+      description: 'Find answers to common questions and learn how to use the app',
+      icon: <HelpIcon fontSize="large" />,
       color: '#e93e60',
       route: '/help'
     },
     {
-      title: '3D Visualization',
-      description: 'Explore multiple angles and perspectives of your pool table',
-      icon: <ViewInArIcon fontSize="large" />,
+      title: 'About Us',
+      description: 'Learn about our team and the technology behind the simulation',
+      icon: <InfoIcon fontSize="large" />,
       color: '#6930c3',
       route: '/about'
     }
   ];
 
-  // Current page content based on path
-  const renderPageContent = () => {
-    switch (path) {
-      case '/upload':
-        return (
-          <Box>
-            <Header>
-              <NavBar>
-                <Logo>
-                  Pool Game Simulation
-                </Logo>
-                <NavLinks>
-                  <NavLink active={isActive('/home')} onClick={() => navigate('/home')}>Home</NavLink>
-                  <NavLink active={isActive('/upload')} onClick={() => navigate('/upload')}>Upload</NavLink>
-                  <NavLink active={isActive('/simulation')} onClick={() => navigate('/simulation')}>Simulation</NavLink>
-                  <NavLink active={isActive('/results')} onClick={() => navigate('/results')}>Results</NavLink>
-                  <NavLink active={isActive('/settings')} onClick={() => navigate('/settings')}>Settings</NavLink>
-                  <NavLink active={isActive('/help')} onClick={() => navigate('/help')}>Help</NavLink>
-                  <NavLink active={isActive('/about')} onClick={() => navigate('/about')}>About</NavLink>
-                </NavLinks>
-                <ActionButton onClick={() => navigate('/')}>Logout</ActionButton>
-              </NavBar>
-              <MainHeading variant="h1">
-                Upload Pool Table Image
-              </MainHeading>
-              <SubHeading variant="body1">
-                Take a photo or upload an existing image to begin your pool game analysis
-              </SubHeading>
-            </Header>
-            
-            <Container maxWidth="lg" sx={{ mt: 5, mb: 8 }}>
-              <Grid container spacing={4}>
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ 
-                    height: '100%',
-                    border: '2px dashed #ccc',
-                    borderRadius: 4,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    p: 4
-                  }}>
-                    <CloudUploadIcon sx={{ fontSize: 60, color: '#6930c3', mb: 2 }} />
-                    <Typography variant="h6" gutterBottom>
-                      Drag & Drop Image Here
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" align="center" sx={{ mb: 3 }}>
-                      Supports: JPG, PNG, HEIC (max 10MB)
-                    </Typography>
-                    <ActionButton variant="contained">
-                      Browse Files
-                    </ActionButton>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Card sx={{ 
-                    height: '100%',
-                    borderRadius: 4,
-                    bgcolor: '#f8f9fa',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    p: 3
-                  }}>
-                    <Typography variant="h6" gutterBottom>
-                      Image Preview
-                    </Typography>
-                    <Box sx={{ 
-                      flex: 1,
-                      bgcolor: '#e9ecef',
-                      borderRadius: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      p: 2,
-                      minHeight: 250
-                    }}>
-                      <Typography color="textSecondary">
-                        Preview will appear here
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-                      <ActionButton 
-                        onClick={() => navigate('/simulation')}
-                        disabled
-                      >
-                        Proceed to Simulation
-                      </ActionButton>
-                    </Box>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Container>
-          </Box>
-        );
-      case '/home':
-      default:
-        return (
-          <Box>
-            <Header>
-              <NavBar>
-                <Logo>
-                  Pool Game Simulation
-                </Logo>
-                <NavLinks>
-                  <NavLink active={isActive('/home')} onClick={() => navigate('/home')}>Home</NavLink>
-                  <NavLink active={isActive('/upload')} onClick={() => navigate('/upload')}>Upload</NavLink>
-                  <NavLink active={isActive('/simulation')} onClick={() => navigate('/simulation')}>Simulation</NavLink>
-                  <NavLink active={isActive('/results')} onClick={() => navigate('/results')}>Results</NavLink>
-                  <NavLink active={isActive('/settings')} onClick={() => navigate('/settings')}>Settings</NavLink>
-                  <NavLink active={isActive('/help')} onClick={() => navigate('/help')}>Help</NavLink>
-                  <NavLink active={isActive('/about')} onClick={() => navigate('/about')}>About</NavLink>
-                </NavLinks>
-                <ActionButton onClick={() => navigate('/')}>Logout</ActionButton>
-              </NavBar>
-              <MainHeading variant="h1">
-                Provide You the Best Pool Game Service
-              </MainHeading>
-              <SubHeading variant="body1">
-                Upload your pool table images and let our AI analyze the best shots for you. You can trust us!
-              </SubHeading>
-              <ActionButton 
-                variant="contained"
-                sx={{ mt: 2, alignSelf: 'flex-start' }}
-                onClick={() => navigate('/upload')}
-              >
-                Upload Now
-              </ActionButton>
-            </Header>
-            
-            <Container maxWidth="lg" sx={{ mt: 8, mb: 8 }}>
-              <Box sx={{ textAlign: 'center', mb: 6 }}>
-                <SectionTitle variant="subtitle1">OUR SERVICES</SectionTitle>
-                <SectionHeading variant="h2">We Provide Best Quality Service</SectionHeading>
-                <Typography variant="body1" color="textSecondary" sx={{ maxWidth: 700, mx: 'auto' }}>
-                  Our pool game simulation offers state-of-the-art image recognition, physics engine, and easy-to-use interface
-                  to help improve your game. Perfect for players of all levels.
-                </Typography>
-              </Box>
-              
-              <Grid container spacing={3}>
-                {featureCards.map((card, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <FeatureCard bgcolor={card.color}>
-                      <CardContent sx={{ p: 3 }}>
-                        <FeatureIcon>
-                          {card.icon}
-                        </FeatureIcon>
-                        <Typography variant="h6" gutterBottom>
-                          {card.title}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 3, opacity: 0.8 }}>
-                          {card.description}
-                        </Typography>
-                        <Button 
-                          variant="contained" 
-                          onClick={() => navigate(card.route)}
-                          sx={{ 
-                            bgcolor: 'rgba(255, 255, 255, 0.2)', 
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'rgba(255, 255, 255, 0.3)'
-                            }
-                          }}
-                        >
-                          Learn More
-                        </Button>
-                      </CardContent>
-                    </FeatureCard>
-                  </Grid>
-                ))}
-              </Grid>
-            </Container>
-          </Box>
-        );
-    }
-  };
-
-  return renderPageContent();
+  return (
+    <Box>
+      <Header>
+        <NavBar>
+          <Logo>
+            Pool Game Simulation
+          </Logo>
+          <NavLinks>
+            <NavLink active={isActive('/home')} onClick={() => navigate('/home')}>Home</NavLink>
+            <NavLink active={isActive('/upload')} onClick={() => navigate('/upload')}>Upload</NavLink>
+            <NavLink active={isActive('/simulation')} onClick={() => navigate('/simulation')}>Simulation</NavLink>
+            <NavLink active={isActive('/results')} onClick={() => navigate('/results')}>Results</NavLink>
+            <NavLink active={isActive('/settings')} onClick={() => navigate('/settings')}>Settings</NavLink>
+            <NavLink active={isActive('/help')} onClick={() => navigate('/help')}>Help</NavLink>
+            <NavLink active={isActive('/about')} onClick={() => navigate('/about')}>About</NavLink>
+          </NavLinks>
+          <ActionButton onClick={() => navigate('/')}>Logout</ActionButton>
+        </NavBar>
+        <MainHeading variant="h1">
+          {userName ? `Welcome, ${userName}!` : 'Provide You the Best Pool Game Service'}
+        </MainHeading>
+        <SubHeading variant="body1">
+          Upload your pool table images and let our AI analyze the best shots for you. You can trust us!
+        </SubHeading>
+        <ActionButton 
+          variant="contained"
+          sx={{ mt: 2, alignSelf: 'flex-start' }}
+          onClick={() => navigate('/upload')}
+        >
+          Upload Now
+        </ActionButton>
+      </Header>
+      
+      <Container maxWidth="lg" sx={{ mt: 8, mb: 8 }}>
+        <Box sx={{ textAlign: 'center', mb: 6 }}>
+          <SectionTitle variant="subtitle1">OUR SERVICES</SectionTitle>
+          <SectionHeading variant="h2">We Provide Best Quality Service</SectionHeading>
+          <Typography variant="body1" color="textSecondary" sx={{ maxWidth: 700, mx: 'auto' }}>
+            Our pool game simulation offers state-of-the-art image recognition, physics engine, and easy-to-use interface
+            to help improve your game. Perfect for players of all levels.
+          </Typography>
+        </Box>
+        
+        <Grid container spacing={3}>
+          {featureCards.map((card, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <FeatureCard bgcolor={card.color}>
+                <CardContent sx={{ p: 3 }}>
+                  <FeatureIcon>
+                    {card.icon}
+                  </FeatureIcon>
+                  <Typography variant="h6" gutterBottom>
+                    {card.title}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 3, opacity: 0.8 }}>
+                    {card.description}
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => navigate(card.route)}
+                    sx={{ 
+                      bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.3)'
+                      }
+                    }}
+                  >
+                    Learn More
+                  </Button>
+                </CardContent>
+              </FeatureCard>
+            </Grid>
+          ))}
+        </Grid>
+        
+        {/* Second row for Settings, Help, and About */}
+        <Grid container spacing={3} sx={{ mt: 4 }}>
+          {additionalFeatures.map((card, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <FeatureCard bgcolor={card.color}>
+                <CardContent sx={{ p: 3 }}>
+                  <FeatureIcon>
+                    {card.icon}
+                  </FeatureIcon>
+                  <Typography variant="h6" gutterBottom>
+                    {card.title}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 3, opacity: 0.8 }}>
+                    {card.description}
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => navigate(card.route)}
+                    sx={{ 
+                      bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.3)'
+                      }
+                    }}
+                  >
+                    Learn More
+                  </Button>
+                </CardContent>
+              </FeatureCard>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    </Box>
+  );
 }
