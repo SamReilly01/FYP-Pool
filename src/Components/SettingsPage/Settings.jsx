@@ -23,8 +23,14 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import { ColorModeContext } from '../../ThemeContext';
-import Avatar from '@mui/material/Avatar';
+import { getCurrentUser, updateUserPassword, updateUserEmail } from '../../services/authService';
 
 // Icons
 import SaveIcon from '@mui/icons-material/Save';
@@ -45,10 +51,13 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import PaletteIcon from '@mui/icons-material/Palette';
 import NightlightIcon from '@mui/icons-material/Nightlight';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import EmailIcon from '@mui/icons-material/Email';
+import LockIcon from '@mui/icons-material/Lock';
+import WarningIcon from '@mui/icons-material/Warning';
 
 // Styled components with theme-aware styles
 const Header = styled(Box)(({ theme }) => ({
-  background: theme.palette.mode === 'dark' 
+  background: theme.palette.mode === 'dark'
     ? 'linear-gradient(90deg, #7e57c2 0%, #5e35b1 100%)'
     : 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
   borderRadius: '0 0 30% 0',
@@ -96,16 +105,16 @@ const ActionButton = styled(Button)(({ theme, color }) => ({
   padding: theme.spacing(1, 4),
   textTransform: 'none',
   fontWeight: 'bold',
-  boxShadow: theme.palette.mode === 'dark' 
+  boxShadow: theme.palette.mode === 'dark'
     ? '0 4px 20px rgba(0, 0, 0, 0.3)'
     : '0 4px 20px rgba(0, 0, 0, 0.1)',
   '&:hover': {
-    backgroundColor: color 
-      ? color 
-      : theme.palette.mode === 'dark' 
+    backgroundColor: color
+      ? color
+      : theme.palette.mode === 'dark'
         ? '#f57c00'
         : '#f2a365',
-    boxShadow: theme.palette.mode === 'dark' 
+    boxShadow: theme.palette.mode === 'dark'
       ? '0 6px 25px rgba(0, 0, 0, 0.4)'
       : '0 6px 25px rgba(0, 0, 0, 0.15)',
   },
@@ -129,14 +138,14 @@ const SubHeading = styled(Typography)(({ theme }) => ({
 
 const SettingCard = styled(Card)(({ theme }) => ({
   borderRadius: theme.spacing(2),
-  boxShadow: theme.palette.mode === 'dark' 
+  boxShadow: theme.palette.mode === 'dark'
     ? '0 4px 15px rgba(0, 0, 0, 0.3)'
     : '0 4px 15px rgba(0, 0, 0, 0.05)',
   height: '100%',
   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
   '&:hover': {
     transform: 'translateY(-3px)',
-    boxShadow: theme.palette.mode === 'dark' 
+    boxShadow: theme.palette.mode === 'dark'
       ? '0 6px 20px rgba(0, 0, 0, 0.4)'
       : '0 6px 20px rgba(0, 0, 0, 0.1)',
   }
@@ -181,14 +190,14 @@ const DarkModeToggleButton = styled(Box)(({ theme, active }) => ({
   justifyContent: 'center',
   padding: theme.spacing(1, 2),
   borderRadius: theme.spacing(4),
-  backgroundColor: active 
-    ? theme.palette.mode === 'dark' 
-      ? 'rgba(149, 117, 205, 0.2)' 
+  backgroundColor: active
+    ? theme.palette.mode === 'dark'
+      ? 'rgba(149, 117, 205, 0.2)'
       : 'rgba(105, 48, 195, 0.1)'
     : 'transparent',
-  color: active 
-    ? theme.palette.mode === 'dark' 
-      ? '#9575cd' 
+  color: active
+    ? theme.palette.mode === 'dark'
+      ? '#9575cd'
       : '#6930c3'
     : theme.palette.text.secondary,
   cursor: 'pointer',
@@ -198,8 +207,8 @@ const DarkModeToggleButton = styled(Box)(({ theme, active }) => ({
     marginRight: 0,
   },
   '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' 
-      ? 'rgba(149, 117, 205, 0.1)' 
+    backgroundColor: theme.palette.mode === 'dark'
+      ? 'rgba(149, 117, 205, 0.1)'
       : 'rgba(105, 48, 195, 0.05)',
   },
 }));
@@ -281,9 +290,6 @@ export default function SettingsPage() {
   // Get the color mode context
   const colorMode = useContext(ColorModeContext);
 
-  // Get user information from localStorage
-  const user_id = localStorage.getItem('user_id');
-
   // State for tabs
   const [activeTab, setActiveTab] = useState(0);
 
@@ -297,11 +303,17 @@ export default function SettingsPage() {
   const [ballRestitution, setBallRestitution] = useState(parseFloat(localStorage.getItem('ballRestitution') || '0.9'));
   const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
-  // Account settings
+  // Account settings from authentication service
+  const [user, setUser] = useState({ email: '', user_id: '' });
   const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Loading and confirmation states
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [resetAccountDialogOpen, setResetAccountDialogOpen] = useState(false);
 
   // Notification for saving settings
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
@@ -309,18 +321,36 @@ export default function SettingsPage() {
   // Theme selection mode
   const [themeMode, setThemeMode] = useState('auto');
 
-  // Load user info on component mount
+  // Load user info and settings on component mount
   useEffect(() => {
-    // In a real app, we'd fetch these from a backend API
-    // Here we'll just simulate with localStorage
-    if (user_id) {
-      setEmail(localStorage.getItem('userEmail') || 'user@example.com');
+    // Get user information from auth service
+    const currentUser = getCurrentUser();
+
+    if (currentUser && currentUser.user_id) {
+      setUser(currentUser);
+      setEmail(currentUser.email || '');
+    } else {
+      // If not logged in, redirect to login
+      navigate('/');
     }
-    
+
     // Get theme mode preference
     const savedThemeMode = localStorage.getItem('themeMode') || 'auto';
     setThemeMode(savedThemeMode);
-  }, [user_id]);
+
+    // Set initial tab from URL if present
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab) {
+      switch (tab) {
+        case 'game': setActiveTab(0); break;
+        case 'physics': setActiveTab(1); break;
+        case 'appearance': setActiveTab(2); break;
+        case 'account': setActiveTab(3); break;
+        default: setActiveTab(0);
+      }
+    }
+  }, [navigate, location.search]);
 
   // Function to check active route
   const isActive = (route) => path === route;
@@ -328,6 +358,10 @@ export default function SettingsPage() {
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+
+    // Update URL with tab parameter (for sharing/bookmarking)
+    const tabNames = ['game', 'physics', 'appearance', 'account'];
+    navigate(`/settings?tab=${tabNames[newValue]}`, { replace: true });
   };
 
   // Handle dark mode toggle
@@ -335,17 +369,17 @@ export default function SettingsPage() {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     colorMode.toggleColorMode();
-    
+
     // Also update theme mode to 'manual'
     setThemeMode('manual');
     localStorage.setItem('themeMode', 'manual');
   };
-  
+
   // Handle theme mode selection
   const handleThemeModeChange = (mode) => {
     setThemeMode(mode);
     localStorage.setItem('themeMode', mode);
-    
+
     if (mode === 'auto') {
       // In auto mode, set based on system preference
       const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -388,9 +422,9 @@ export default function SettingsPage() {
     setEnableSounds(true);
     setTableFriction(0.98);
     setBallRestitution(0.9);
-    
+
     // Don't reset dark mode to maintain user's theme preference
-    
+
     // Show notification
     setNotification({
       open: true,
@@ -399,33 +433,142 @@ export default function SettingsPage() {
     });
   };
 
-  // Save account changes
-  const handleSaveAccount = () => {
-    // Validate passwords match
-    if (newPassword && newPassword !== confirmPassword) {
+  // Update email with API call
+  const handleUpdateEmail = async () => {
+    if (!email || email === user.email) return;
+
+    try {
+      setIsUpdatingEmail(true);
+
+      // Call the API service to update email
+      await updateUserEmail(email);
+
+      // Update local user state
+      setUser({ ...user, email });
+
+      // Show success notification
       setNotification({
         open: true,
-        message: 'New passwords do not match',
+        message: 'Email updated successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error updating email:', error);
+
+      // Show error notification
+      setNotification({
+        open: true,
+        message: error.error || 'Failed to update email',
         severity: 'error'
       });
-      return;
+    } finally {
+      setIsUpdatingEmail(false);
     }
+  };
 
-    // In a real app, we'd call an API to update the account
-    // Here we'll just simulate with localStorage
-    localStorage.setItem('userEmail', email);
-
+// Update password with API call
+// Update password with API call
+const handleUpdatePassword = async () => {
+  // Validate passwords match
+  if (!currentPassword) {
+    setNotification({
+      open: true,
+      message: 'Current password is required',
+      severity: 'error'
+    });
+    return;
+  }
+  
+  if (!newPassword) {
+    setNotification({
+      open: true,
+      message: 'New password is required',
+      severity: 'error'
+    });
+    return;
+  }
+  
+  if (newPassword !== confirmPassword) {
+    setNotification({
+      open: true,
+      message: 'New passwords do not match',
+      severity: 'error'
+    });
+    return;
+  }
+  
+  try {
+    // Show progress indicator
+    setIsUpdatingPassword(true);
+    
+    // Log for debugging
+    console.log("Starting password update process");
+    console.log("User auth status:", !!localStorage.getItem('token'));
+    
+    // Call the API service to update password
+    const result = await updateUserPassword(currentPassword, newPassword);
+    
+    console.log("Password update successful:", result);
+    
     // Show success notification
     setNotification({
       open: true,
-      message: 'Account settings updated successfully',
+      message: 'Password updated successfully',
       severity: 'success'
     });
-
+    
     // Clear password fields
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+  } catch (error) {
+    // Enhanced error logging
+    console.error('Error updating password:', error);
+    
+    // Show user-friendly error notification
+    setNotification({
+      open: true,
+      message: error.error || 'Failed to update password',
+      severity: 'error'
+    });
+  } finally {
+    setIsUpdatingPassword(false);
+  }
+};
+
+  // Handle Reset Account Data
+  const handleResetAccountData = () => {
+    // In a real app, this would call an API to delete user data
+    // For now, we'll just clear localStorage except for auth data
+    const user_id = localStorage.getItem('user_id');
+    const email = localStorage.getItem('userEmail');
+    const token = localStorage.getItem('token');
+
+    localStorage.clear();
+
+    // Restore auth data
+    localStorage.setItem('user_id', user_id);
+    localStorage.setItem('userEmail', email);
+    localStorage.setItem('token', token);
+
+    // Reset state
+    setPlayerLevel('intermediate');
+    setDefaultSimulationSpeed(1.0);
+    setShowTrajectories(true);
+    setShowShotSuggestions(true);
+    setEnableSounds(true);
+    setTableFriction(0.98);
+    setBallRestitution(0.9);
+
+    // Close dialog
+    setResetAccountDialogOpen(false);
+
+    // Show notification
+    setNotification({
+      open: true,
+      message: 'Account data has been reset',
+      severity: 'success'
+    });
   };
 
   // Close notification
@@ -440,14 +583,14 @@ export default function SettingsPage() {
       setDarkMode(mode === 'dark');
       colorMode.toggleColorMode();
     }
-    
+
     // Set to manual mode
     setThemeMode('manual');
     localStorage.setItem('themeMode', 'manual');
   };
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       bgcolor: theme.palette.mode === 'dark' ? 'background.default' : '#f5f5f5',
       minHeight: '100vh',
       transition: 'background-color 0.3s ease'
@@ -819,7 +962,7 @@ export default function SettingsPage() {
 
                   {/* Theme Mode Selection */}
                   <DarkModeToggleGroup>
-                    <DarkModeToggleButton 
+                    <DarkModeToggleButton
                       active={themeMode === 'light'}
                       onClick={() => handleThemeModeChange('light')}
                       sx={{ flex: 1 }}
@@ -827,8 +970,8 @@ export default function SettingsPage() {
                       <WbSunnyIcon sx={{ mr: 1, fontSize: '1rem' }} />
                       <Typography variant="body2">Light</Typography>
                     </DarkModeToggleButton>
-                    
-                    <DarkModeToggleButton 
+
+                    <DarkModeToggleButton
                       active={themeMode === 'auto'}
                       onClick={() => handleThemeModeChange('auto')}
                       sx={{ flex: 1 }}
@@ -836,8 +979,8 @@ export default function SettingsPage() {
                       <SettingsIcon sx={{ mr: 1, fontSize: '1rem' }} />
                       <Typography variant="body2">Auto</Typography>
                     </DarkModeToggleButton>
-                    
-                    <DarkModeToggleButton 
+
+                    <DarkModeToggleButton
                       active={themeMode === 'manual' && theme.palette.mode === 'dark'}
                       onClick={() => handleThemeModeChange('manual')}
                       sx={{ flex: 1 }}
@@ -848,10 +991,10 @@ export default function SettingsPage() {
                   </DarkModeToggleGroup>
 
                   <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-                    {themeMode === 'auto' 
-                      ? 'Theme will match your system preferences' 
-                      : themeMode === 'manual' 
-                        ? 'Theme is set manually' 
+                    {themeMode === 'auto'
+                      ? 'Theme will match your system preferences'
+                      : themeMode === 'manual'
+                        ? 'Theme is set manually'
                         : 'Theme is set to always light'}
                   </Typography>
 
@@ -862,7 +1005,7 @@ export default function SettingsPage() {
 
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <ThemePreviewCard 
+                      <ThemePreviewCard
                         mode="light"
                         onClick={() => handleThemePreviewClick('light')}
                       >
@@ -885,7 +1028,7 @@ export default function SettingsPage() {
                       </ThemePreviewCard>
                     </Grid>
                     <Grid item xs={6}>
-                      <ThemePreviewCard 
+                      <ThemePreviewCard
                         mode="dark"
                         onClick={() => handleThemePreviewClick('dark')}
                       >
@@ -936,12 +1079,12 @@ export default function SettingsPage() {
 
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" paragraph>
-                      Dark mode helps reduce eye strain by using darker colours and can save battery on devices with OLED screens.
+                      Dark mode helps reduce eye strain by using darker colors and can save battery on devices with OLED screens.
                     </Typography>
 
-                    <Box sx={{ 
-                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)', 
-                      p: 2, 
+                    <Box sx={{
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                      p: 2,
                       borderRadius: 2,
                       mb: 3
                     }}>
@@ -1003,18 +1146,42 @@ export default function SettingsPage() {
                   </SettingCardTitle>
 
                   <Box sx={{ mb: 4 }}>
-                    <TextField
-                      label="Email Address"
-                      variant="outlined"
-                      fullWidth
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      sx={{ mb: 3 }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                      <EmailIcon sx={{ color: theme.palette.text.secondary, mr: 1, fontSize: '1rem' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Email Address
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', mb: 2 }}>
+                      <TextField
+                        variant="outlined"
+                        fullWidth
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        sx={{ mr: 1 }}
+                        disabled={isUpdatingEmail}
+                      />
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleUpdateEmail}
+                        disabled={!email || email === user.email || isUpdatingEmail}
+                        sx={{ minWidth: 100, borderRadius: 2 }}
+                      >
+                        {isUpdatingEmail ? (
+                          <CircularProgress size={24} color="inherit" />
+                        ) : (
+                          'Update'
+                        )}
+                      </Button>
+                    </Box>
 
                     <Divider sx={{ my: 3 }} />
 
-                    <Typography variant="h6" gutterBottom>Change Password</Typography>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <LockIcon sx={{ mr: 1, color: theme.palette.text.secondary, fontSize: '1.25rem' }} />
+                      Change Password
+                    </Typography>
 
                     <TextField
                       label="Current Password"
@@ -1024,6 +1191,7 @@ export default function SettingsPage() {
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       sx={{ mb: 2 }}
+                      disabled={isUpdatingPassword}
                     />
 
                     <TextField
@@ -1034,6 +1202,7 @@ export default function SettingsPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       sx={{ mb: 2 }}
+                      disabled={isUpdatingPassword}
                     />
 
                     <TextField
@@ -1045,7 +1214,23 @@ export default function SettingsPage() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       error={newPassword !== confirmPassword && newPassword !== '' && confirmPassword !== ''}
                       helperText={newPassword !== confirmPassword && newPassword !== '' && confirmPassword !== '' ? "Passwords don't match" : ""}
+                      disabled={isUpdatingPassword}
                     />
+
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      fullWidth
+                      sx={{ mt: 2, borderRadius: 2 }}
+                      onClick={handleUpdatePassword}
+                      disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || isUpdatingPassword}
+                    >
+                      {isUpdatingPassword ? (
+                        <CircularProgress size={24} color="inherit" />
+                      ) : (
+                        'Update Password'
+                      )}
+                    </Button>
                   </Box>
                 </CardContent>
               </SettingCard>
@@ -1088,21 +1273,22 @@ export default function SettingsPage() {
                   <Divider sx={{ my: 3 }} />
 
                   <SettingCardTitle>
-                    <SettingsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
-                    <Typography variant="h6">Advanced Settings</Typography>
+                    <WarningIcon sx={{ color: theme.palette.error.main, mr: 1 }} />
+                    <Typography variant="h6" color="error">Advanced Settings</Typography>
                   </SettingCardTitle>
                   <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Clearing your account data will reset all settings and delete saved simulations. This cannot be undone.
+                    </Typography>
                     <Button
                       variant="outlined"
                       color="error"
                       fullWidth
                       sx={{ mt: 2, borderRadius: 8 }}
+                      onClick={() => setResetAccountDialogOpen(true)}
                     >
                       Reset Account Data
                     </Button>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      This will delete all your saved simulations and settings
-                    </Typography>
                   </Box>
                 </CardContent>
               </SettingCard>
@@ -1111,7 +1297,7 @@ export default function SettingsPage() {
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
             <ActionButton
-              onClick={handleSaveAccount}
+              onClick={handleSaveSettings}
               startIcon={<SaveIcon />}
             >
               Save Account Settings
@@ -1119,6 +1305,44 @@ export default function SettingsPage() {
           </Box>
         </TabPanel>
       </Container>
+
+      {/* Reset Account Confirmation Dialog */}
+      <Dialog
+        open={resetAccountDialogOpen}
+        onClose={() => setResetAccountDialogOpen(false)}
+        aria-labelledby="reset-account-dialog-title"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle id="reset-account-dialog-title" sx={{ color: 'error.main' }}>
+          Reset Account Data?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will permanently delete all your saved simulations and reset all settings. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setResetAccountDialogOpen(false)}
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleResetAccountData}
+            variant="contained"
+            color="error"
+            sx={{ borderRadius: 2 }}
+          >
+            Reset All Data
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

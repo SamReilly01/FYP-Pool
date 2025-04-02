@@ -6,7 +6,7 @@ const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/upload');
 const imageProcessingRoutes = require('./routes/imageProcessing');
 const resultsRoutes = require('./routes/results');
-const path = require('path'); // Ensure path is required
+const path = require('path');
 
 dotenv.config();
 
@@ -16,16 +16,16 @@ app.use(bodyParser.json());
 app.use(cors()); 
 app.use(express.json());
 
-// 🔥 Serve static files from the uploads folder
+// Serve static files from the uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api', authRoutes); 
-app.use('/api/auth', authRoutes);
+// Route registrations 
+app.use('/api/auth', authRoutes); // This makes all auth routes available under /api/auth
 app.use('/api', uploadRoutes);
 app.use('/api/image', imageProcessingRoutes);
 app.use('/api/results', resultsRoutes);
 
-// ✅ Debugging log
+// Debugging log
 app.use((req, res, next) => {
     console.log(`Incoming request: ${req.method} ${req.url}`);
     next();
