@@ -6,7 +6,7 @@ import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import { styled } from '@mui/material/styles';
+import { styled, useTheme } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -24,6 +24,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import { ColorModeContext } from '../../ThemeContext';
+import Avatar from '@mui/material/Avatar';
 
 // Icons
 import SaveIcon from '@mui/icons-material/Save';
@@ -33,7 +34,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SpeedIcon from '@mui/icons-material/Speed';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import InfoIcon from '@mui/icons-material/Info';
-import SportsIcon from '@mui/icons-material/Sports'; // Use this instead of SportsBilliards
+import SportsIcon from '@mui/icons-material/Sports';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -41,10 +42,15 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import PaletteIcon from '@mui/icons-material/Palette';
+import NightlightIcon from '@mui/icons-material/Nightlight';
+import WbSunnyIcon from '@mui/icons-material/WbSunny';
 
-// Styled components - reuse from other components
+// Styled components with theme-aware styles
 const Header = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
+  background: theme.palette.mode === 'dark' 
+    ? 'linear-gradient(90deg, #7e57c2 0%, #5e35b1 100%)'
+    : 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
   borderRadius: '0 0 30% 0',
   padding: theme.spacing(2, 4),
   color: 'white',
@@ -84,16 +90,24 @@ const NavLink = styled(Button)(({ theme, active }) => ({
 }));
 
 const ActionButton = styled(Button)(({ theme, color }) => ({
-  backgroundColor: color || '#ff9f1c',
-  color: 'white',
+  backgroundColor: color || (theme.palette.mode === 'dark' ? '#ffb74d' : '#ff9f1c'),
+  color: theme.palette.mode === 'dark' ? '#000000' : 'white',
   borderRadius: theme.spacing(5),
   padding: theme.spacing(1, 4),
   textTransform: 'none',
   fontWeight: 'bold',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+  boxShadow: theme.palette.mode === 'dark' 
+    ? '0 4px 20px rgba(0, 0, 0, 0.3)'
+    : '0 4px 20px rgba(0, 0, 0, 0.1)',
   '&:hover': {
-    backgroundColor: color ? color : '#f2a365',
-    boxShadow: '0 6px 25px rgba(0, 0, 0, 0.15)',
+    backgroundColor: color 
+      ? color 
+      : theme.palette.mode === 'dark' 
+        ? '#f57c00'
+        : '#f2a365',
+    boxShadow: theme.palette.mode === 'dark' 
+      ? '0 6px 25px rgba(0, 0, 0, 0.4)'
+      : '0 6px 25px rgba(0, 0, 0, 0.15)',
   },
 }));
 
@@ -102,6 +116,7 @@ const MainHeading = styled(Typography)(({ theme }) => ({
   fontWeight: 'bold',
   marginTop: theme.spacing(4),
   marginBottom: theme.spacing(1),
+  color: 'white',
 }));
 
 const SubHeading = styled(Typography)(({ theme }) => ({
@@ -109,12 +124,22 @@ const SubHeading = styled(Typography)(({ theme }) => ({
   opacity: 0.8,
   marginBottom: theme.spacing(3),
   maxWidth: '500px',
+  color: 'white',
 }));
 
 const SettingCard = styled(Card)(({ theme }) => ({
   borderRadius: theme.spacing(2),
-  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+  boxShadow: theme.palette.mode === 'dark' 
+    ? '0 4px 15px rgba(0, 0, 0, 0.3)'
+    : '0 4px 15px rgba(0, 0, 0, 0.05)',
   height: '100%',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  '&:hover': {
+    transform: 'translateY(-3px)',
+    boxShadow: theme.palette.mode === 'dark' 
+      ? '0 6px 20px rgba(0, 0, 0, 0.4)'
+      : '0 6px 20px rgba(0, 0, 0, 0.1)',
+  }
 }));
 
 const SettingCardTitle = styled(Box)(({ theme }) => ({
@@ -126,15 +151,107 @@ const SettingCardTitle = styled(Box)(({ theme }) => ({
 const StyledTabs = styled(Tabs)(({ theme }) => ({
   marginBottom: theme.spacing(4),
   '& .MuiTabs-indicator': {
-    backgroundColor: '#6930c3',
+    backgroundColor: theme.palette.mode === 'dark' ? '#9575cd' : '#6930c3',
   },
   '& .MuiTab-root': {
     textTransform: 'none',
     fontWeight: 'bold',
     '&.Mui-selected': {
-      color: '#6930c3',
+      color: theme.palette.mode === 'dark' ? '#9575cd' : '#6930c3',
     },
   },
+}));
+
+// Styled DarkMode toggle group
+const DarkModeToggleGroup = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: theme.spacing(1),
+  borderRadius: theme.spacing(5),
+  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+  maxWidth: 320,
+  margin: '0 auto',
+  marginBottom: theme.spacing(2),
+}));
+
+const DarkModeToggleButton = styled(Box)(({ theme, active }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: theme.spacing(1, 2),
+  borderRadius: theme.spacing(4),
+  backgroundColor: active 
+    ? theme.palette.mode === 'dark' 
+      ? 'rgba(149, 117, 205, 0.2)' 
+      : 'rgba(105, 48, 195, 0.1)'
+    : 'transparent',
+  color: active 
+    ? theme.palette.mode === 'dark' 
+      ? '#9575cd' 
+      : '#6930c3'
+    : theme.palette.text.secondary,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  marginRight: theme.spacing(1),
+  '&:last-child': {
+    marginRight: 0,
+  },
+  '&:hover': {
+    backgroundColor: theme.palette.mode === 'dark' 
+      ? 'rgba(149, 117, 205, 0.1)' 
+      : 'rgba(105, 48, 195, 0.05)',
+  },
+}));
+
+// Theme preview cards
+const ThemePreviewCard = styled(Box)(({ theme, mode }) => ({
+  width: '100%',
+  height: 140,
+  borderRadius: theme.spacing(2),
+  overflow: 'hidden',
+  position: 'relative',
+  border: `2px solid ${theme.palette.mode === mode ? (theme.palette.mode === 'dark' ? '#9575cd' : '#6930c3') : 'transparent'}`,
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  boxShadow: theme.palette.mode === 'dark'
+    ? '0 4px 15px rgba(0, 0, 0, 0.3)'
+    : '0 4px 15px rgba(0, 0, 0, 0.1)',
+  '&:hover': {
+    transform: 'translateY(-3px)',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 6px 20px rgba(0, 0, 0, 0.4)'
+      : '0 6px 20px rgba(0, 0, 0, 0.15)',
+  }
+}));
+
+const ThemePreviewHeader = styled(Box)(({ mode }) => ({
+  background: mode === 'dark'
+    ? 'linear-gradient(90deg, #7e57c2 0%, #5e35b1 100%)'
+    : 'linear-gradient(90deg, #5e60ce 0%, #6930c3 100%)',
+  height: '40%',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '8px 12px',
+}));
+
+const ThemePreviewContent = styled(Box)(({ mode }) => ({
+  height: '60%',
+  backgroundColor: mode === 'dark' ? '#282828' : '#ffffff',
+  padding: '8px 12px',
+  display: 'flex',
+  flexDirection: 'column',
+}));
+
+const PreviewButton = styled(Box)(({ mode }) => ({
+  backgroundColor: mode === 'dark' ? '#ffb74d' : '#ff9f1c',
+  color: '#fff',
+  fontSize: '8px',
+  padding: '2px 6px',
+  borderRadius: '10px',
+  alignSelf: 'flex-end',
+  marginTop: 'auto',
 }));
 
 function TabPanel(props) {
@@ -159,6 +276,7 @@ export default function SettingsPage() {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
+  const theme = useTheme();
 
   // Get the color mode context
   const colorMode = useContext(ColorModeContext);
@@ -188,6 +306,9 @@ export default function SettingsPage() {
   // Notification for saving settings
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
+  // Theme selection mode
+  const [themeMode, setThemeMode] = useState('auto');
+
   // Load user info on component mount
   useEffect(() => {
     // In a real app, we'd fetch these from a backend API
@@ -195,6 +316,10 @@ export default function SettingsPage() {
     if (user_id) {
       setEmail(localStorage.getItem('userEmail') || 'user@example.com');
     }
+    
+    // Get theme mode preference
+    const savedThemeMode = localStorage.getItem('themeMode') || 'auto';
+    setThemeMode(savedThemeMode);
   }, [user_id]);
 
   // Function to check active route
@@ -206,9 +331,31 @@ export default function SettingsPage() {
   };
 
   // Handle dark mode toggle
-  const handleDarkModeToggle = (e) => {
-    setDarkMode(e.target.checked);
+  const handleDarkModeToggle = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
     colorMode.toggleColorMode();
+    
+    // Also update theme mode to 'manual'
+    setThemeMode('manual');
+    localStorage.setItem('themeMode', 'manual');
+  };
+  
+  // Handle theme mode selection
+  const handleThemeModeChange = (mode) => {
+    setThemeMode(mode);
+    localStorage.setItem('themeMode', mode);
+    
+    if (mode === 'auto') {
+      // In auto mode, set based on system preference
+      const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDarkMode !== darkMode) {
+        // Only toggle if different from current
+        setDarkMode(prefersDarkMode);
+        colorMode.toggleColorMode();
+      }
+    }
+    // 'manual' mode doesn't change the theme, just indicates user preference overrides system
   };
 
   // Save all settings
@@ -222,6 +369,7 @@ export default function SettingsPage() {
     localStorage.setItem('tableFriction', tableFriction.toString());
     localStorage.setItem('ballRestitution', ballRestitution.toString());
     localStorage.setItem('darkMode', darkMode.toString());
+    localStorage.setItem('themeMode', themeMode);
 
     // Show success notification
     setNotification({
@@ -229,10 +377,6 @@ export default function SettingsPage() {
       message: 'Settings saved successfully',
       severity: 'success'
     });
-
-    // In a real app, you would apply the dark mode change here or through a context
-    // For demonstration, we'll log it
-    console.log(`Dark mode set to: ${darkMode}`);
   };
 
   // Reset settings to default
@@ -244,12 +388,13 @@ export default function SettingsPage() {
     setEnableSounds(true);
     setTableFriction(0.98);
     setBallRestitution(0.9);
-    setDarkMode(false);
-
+    
+    // Don't reset dark mode to maintain user's theme preference
+    
     // Show notification
     setNotification({
       open: true,
-      message: 'Settings reset to default values',
+      message: 'Game settings reset to default values',
       severity: 'info'
     });
   };
@@ -288,8 +433,25 @@ export default function SettingsPage() {
     setNotification({ ...notification, open: false });
   };
 
+  // Handle theme preview card click
+  const handleThemePreviewClick = (mode) => {
+    if ((mode === 'dark') !== darkMode) {
+      // Only toggle if different from current
+      setDarkMode(mode === 'dark');
+      colorMode.toggleColorMode();
+    }
+    
+    // Set to manual mode
+    setThemeMode('manual');
+    localStorage.setItem('themeMode', 'manual');
+  };
+
   return (
-    <Box>
+    <Box sx={{ 
+      bgcolor: theme.palette.mode === 'dark' ? 'background.default' : '#f5f5f5',
+      minHeight: '100vh',
+      transition: 'background-color 0.3s ease'
+    }}>
       <Header>
         <NavBar>
           <Logo>
@@ -344,6 +506,11 @@ export default function SettingsPage() {
             iconPosition="start"
           />
           <Tab
+            icon={<PaletteIcon />}
+            label="Appearance"
+            iconPosition="start"
+          />
+          <Tab
             icon={<PersonIcon />}
             label="Account"
             iconPosition="start"
@@ -357,7 +524,7 @@ export default function SettingsPage() {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <SportsIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <SportsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Player Settings</Typography>
                   </SettingCardTitle>
 
@@ -379,7 +546,7 @@ export default function SettingsPage() {
                         </MenuItem>
                         <MenuItem value="intermediate">
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <SportsIcon sx={{ color: '#6930c3', mr: 1 }} />
+                            <SportsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                             Intermediate
                           </Box>
                         </MenuItem>
@@ -402,7 +569,7 @@ export default function SettingsPage() {
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body1" gutterBottom>Default Simulation Speed</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <SpeedIcon sx={{ color: '#6930c3', mr: 1 }} />
+                      <SpeedIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                       <Slider
                         value={defaultSimulationSpeed}
                         onChange={(e, value) => setDefaultSimulationSpeed(value)}
@@ -413,7 +580,7 @@ export default function SettingsPage() {
                         valueLabelFormat={(value) => `${value}x`}
                         sx={{
                           mx: 2,
-                          color: '#6930c3',
+                          color: theme.palette.primary.main,
                           '& .MuiSlider-thumb': {
                             width: 24,
                             height: 24,
@@ -433,7 +600,7 @@ export default function SettingsPage() {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <VisibilityIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <VisibilityIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Display Settings</Typography>
                   </SettingCardTitle>
 
@@ -441,25 +608,9 @@ export default function SettingsPage() {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={darkMode}
-                          onChange={handleDarkModeToggle}
-                          color="secondary"
-                          icon={<Brightness7Icon />}
-                          checkedIcon={<Brightness4Icon />}
-                        />
-                      }
-                      label="Dark Mode"
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
-                      Switch between light and dark color themes
-                    </Typography>
-
-                    <FormControlLabel
-                      control={
-                        <Switch
                           checked={showTrajectories}
                           onChange={(e) => setShowTrajectories(e.target.checked)}
-                          color="secondary"
+                          color="primary"
                         />
                       }
                       label="Show Ball Trajectories"
@@ -473,7 +624,7 @@ export default function SettingsPage() {
                         <Switch
                           checked={showShotSuggestions}
                           onChange={(e) => setShowShotSuggestions(e.target.checked)}
-                          color="secondary"
+                          color="primary"
                         />
                       }
                       label="Show Shot Suggestions"
@@ -487,7 +638,7 @@ export default function SettingsPage() {
                         <Switch
                           checked={enableSounds}
                           onChange={(e) => setEnableSounds(e.target.checked)}
-                          color="secondary"
+                          color="primary"
                         />
                       }
                       label="Enable Sound Effects"
@@ -527,7 +678,7 @@ export default function SettingsPage() {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <SportsIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <SportsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Table Physics</Typography>
                   </SettingCardTitle>
 
@@ -553,7 +704,7 @@ export default function SettingsPage() {
                         valueLabelDisplay="auto"
                         sx={{
                           mx: 2,
-                          color: '#6930c3'
+                          color: theme.palette.primary.main
                         }}
                       />
                       <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>
@@ -585,7 +736,7 @@ export default function SettingsPage() {
                         valueLabelDisplay="auto"
                         sx={{
                           mx: 2,
-                          color: '#6930c3'
+                          color: theme.palette.primary.main
                         }}
                       />
                       <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>
@@ -604,7 +755,7 @@ export default function SettingsPage() {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <InfoIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <InfoIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Physics Information</Typography>
                   </SettingCardTitle>
 
@@ -651,14 +802,203 @@ export default function SettingsPage() {
           </Box>
         </TabPanel>
 
-        {/* Account Settings Tab */}
+        {/* Appearance Settings Tab (NEW) */}
         <TabPanel value={activeTab} index={2}>
           <Grid container spacing={4}>
             <Grid item xs={12} md={6}>
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <PersonIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <PaletteIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
+                    <Typography variant="h6">Theme Settings</Typography>
+                  </SettingCardTitle>
+
+                  <Typography variant="body2" paragraph>
+                    Choose how you want your app to look. You can select a light or dark theme, or let it match your system settings.
+                  </Typography>
+
+                  {/* Theme Mode Selection */}
+                  <DarkModeToggleGroup>
+                    <DarkModeToggleButton 
+                      active={themeMode === 'light'}
+                      onClick={() => handleThemeModeChange('light')}
+                      sx={{ flex: 1 }}
+                    >
+                      <WbSunnyIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                      <Typography variant="body2">Light</Typography>
+                    </DarkModeToggleButton>
+                    
+                    <DarkModeToggleButton 
+                      active={themeMode === 'auto'}
+                      onClick={() => handleThemeModeChange('auto')}
+                      sx={{ flex: 1 }}
+                    >
+                      <SettingsIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                      <Typography variant="body2">Auto</Typography>
+                    </DarkModeToggleButton>
+                    
+                    <DarkModeToggleButton 
+                      active={themeMode === 'manual' && theme.palette.mode === 'dark'}
+                      onClick={() => handleThemeModeChange('manual')}
+                      sx={{ flex: 1 }}
+                    >
+                      <NightlightIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                      <Typography variant="body2">Dark</Typography>
+                    </DarkModeToggleButton>
+                  </DarkModeToggleGroup>
+
+                  <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+                    {themeMode === 'auto' 
+                      ? 'Theme will match your system preferences' 
+                      : themeMode === 'manual' 
+                        ? 'Theme is set manually' 
+                        : 'Theme is set to always light'}
+                  </Typography>
+
+                  {/* Theme Previews */}
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 2, mt: 3 }}>
+                    Preview & Select
+                  </Typography>
+
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <ThemePreviewCard 
+                        mode="light"
+                        onClick={() => handleThemePreviewClick('light')}
+                      >
+                        <ThemePreviewHeader mode="light">
+                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '10px' }}>
+                            Pool Simulation
+                          </Typography>
+                        </ThemePreviewHeader>
+                        <ThemePreviewContent mode="light">
+                          <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '8px', color: '#212121' }}>
+                            Light Theme
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '6px', color: '#757575' }}>
+                            Clear, bright interface for daytime use
+                          </Typography>
+                          <PreviewButton mode="light">
+                            Button
+                          </PreviewButton>
+                        </ThemePreviewContent>
+                      </ThemePreviewCard>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <ThemePreviewCard 
+                        mode="dark"
+                        onClick={() => handleThemePreviewClick('dark')}
+                      >
+                        <ThemePreviewHeader mode="dark">
+                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '10px' }}>
+                            Pool Simulation
+                          </Typography>
+                        </ThemePreviewHeader>
+                        <ThemePreviewContent mode="dark">
+                          <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '8px', color: '#e0e0e0' }}>
+                            Dark Theme
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontSize: '6px', color: '#aaaaaa' }}>
+                            Reduces eye strain in low light conditions
+                          </Typography>
+                          <PreviewButton mode="dark">
+                            Button
+                          </PreviewButton>
+                        </ThemePreviewContent>
+                      </ThemePreviewCard>
+                    </Grid>
+                  </Grid>
+
+                  {/* Dark Mode Switch */}
+                  <Box sx={{ mt: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="body2" sx={{ mr: 2 }}>
+                      {theme.palette.mode === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                    </Typography>
+                    <Switch
+                      checked={theme.palette.mode === 'dark'}
+                      onChange={handleDarkModeToggle}
+                      color="primary"
+                      icon={<Brightness7Icon />}
+                      checkedIcon={<Brightness4Icon />}
+                    />
+                  </Box>
+                </CardContent>
+              </SettingCard>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <SettingCard>
+                <CardContent sx={{ p: 3 }}>
+                  <SettingCardTitle>
+                    <VisibilityIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
+                    <Typography variant="h6">Display Settings</Typography>
+                  </SettingCardTitle>
+
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" paragraph>
+                      Dark mode helps reduce eye strain by using darker colours and can save battery on devices with OLED screens.
+                    </Typography>
+
+                    <Box sx={{ 
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)', 
+                      p: 2, 
+                      borderRadius: 2,
+                      mb: 3
+                    }}>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                        <InfoIcon sx={{ fontSize: '1rem', mr: 1, color: theme.palette.primary.main }} />
+                        Benefits of Dark Mode:
+                      </Typography>
+                      <ul style={{ marginTop: 8, marginBottom: 8, paddingLeft: 20 }}>
+                        <li>
+                          <Typography variant="body2">Reduces eye strain in low-light environments</Typography>
+                        </li>
+                        <li>
+                          <Typography variant="body2">Can save battery life on OLED screens</Typography>
+                        </li>
+                        <li>
+                          <Typography variant="body2">Provides a more immersive gaming experience</Typography>
+                        </li>
+                      </ul>
+                    </Box>
+
+                    <Typography variant="body2" paragraph>
+                      <strong>Auto Theme:</strong> When set to "Auto", the app will automatically switch between light and dark mode based on your system preferences.
+                    </Typography>
+
+                    <Typography variant="body2" paragraph>
+                      <strong>Manual Selection:</strong> Choose either light or dark mode manually to override your system settings.
+                    </Typography>
+                  </Box>
+
+                  <Divider sx={{ my: 3 }} />
+
+                  <Typography variant="body2" paragraph sx={{ mb: 4 }}>
+                    Your theme preference is saved and will be applied whenever you return to the application.
+                  </Typography>
+                </CardContent>
+              </SettingCard>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+            <ActionButton
+              onClick={handleSaveSettings}
+              startIcon={<SaveIcon />}
+            >
+              Save Appearance Settings
+            </ActionButton>
+          </Box>
+        </TabPanel>
+
+        {/* Account Settings Tab */}
+        <TabPanel value={activeTab} index={3}>
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={6}>
+              <SettingCard>
+                <CardContent sx={{ p: 3 }}>
+                  <SettingCardTitle>
+                    <PersonIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Account Information</Typography>
                   </SettingCardTitle>
 
@@ -715,13 +1055,13 @@ export default function SettingsPage() {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <NotificationsIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <NotificationsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Notification Preferences</Typography>
                   </SettingCardTitle>
 
                   <Box sx={{ mb: 3 }}>
                     <FormControlLabel
-                      control={<Switch defaultChecked color="secondary" />}
+                      control={<Switch defaultChecked color="primary" />}
                       label="Email Notifications"
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
@@ -729,7 +1069,7 @@ export default function SettingsPage() {
                     </Typography>
 
                     <FormControlLabel
-                      control={<Switch defaultChecked color="secondary" />}
+                      control={<Switch defaultChecked color="primary" />}
                       label="Weekly Digest"
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
@@ -737,7 +1077,7 @@ export default function SettingsPage() {
                     </Typography>
 
                     <FormControlLabel
-                      control={<Switch color="secondary" />}
+                      control={<Switch color="primary" />}
                       label="New Feature Announcements"
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
@@ -748,7 +1088,7 @@ export default function SettingsPage() {
                   <Divider sx={{ my: 3 }} />
 
                   <SettingCardTitle>
-                    <SettingsIcon sx={{ color: '#6930c3', mr: 1 }} />
+                    <SettingsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
                     <Typography variant="h6">Advanced Settings</Typography>
                   </SettingCardTitle>
                   <Box>
@@ -781,4 +1121,4 @@ export default function SettingsPage() {
       </Container>
     </Box>
   );
-} 
+}
