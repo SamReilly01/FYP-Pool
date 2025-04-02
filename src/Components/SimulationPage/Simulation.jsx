@@ -1016,7 +1016,7 @@ export default function EnhancedSimulationPage() {
     };
   }, [simulationStarted, simulationPaused, simulationSpeed, showTrajectories]);
 
-  // Handle simulation start/resume
+  // Updated handlePlaySimulation function to properly reset state for shot suggestions
   const handlePlaySimulation = () => {
     if (simulationPaused) {
       // If balls have stopped, prep for a new shot instead of resuming physics
@@ -1047,10 +1047,13 @@ export default function EnhancedSimulationPage() {
         // Show notification
         showNotification("Ready for a new shot", "info");
 
-        // Make sure the shot line is hidden
+        // Make sure the shot line is hidden and the aim UI is reset
         setShowShotLine(false);
         setIsManualAiming(false);
         setActiveSuggestion(null);
+
+        // Set the active tab back to the aiming tab to help the user
+        setActiveTab(0);
       } else {
         // Resume the simulation properly
         setSimulationPaused(false);
@@ -1127,7 +1130,12 @@ export default function EnhancedSimulationPage() {
       // Start a new simulation
       startPoolSimulation();
     }
-    console.log("🎮 Simulation started/resumed");
+    console.log("🎮 Simulation started/resumed", {
+      simulationStarted,
+      simulationPaused,
+      playerLevel,
+      activeBallCount: ballPositions.filter(ball => !ball.pocketed).length
+    });
   };
 
   // Handle simulation reset
@@ -1781,7 +1789,7 @@ export default function EnhancedSimulationPage() {
             )}
 
             {/* Shot Suggestions Component with scrollable container */}
-            {!simulationStarted && (
+            {(!simulationStarted || (simulationPaused && ballPositions.every(ball => ball.pocketed || (Math.abs(ball.vx) < 0.01 && Math.abs(ball.vy) < 0.01)))) && (
               <Card sx={{
                 borderRadius: 4,
                 bgcolor: '#f8f9fa',
@@ -1807,11 +1815,12 @@ export default function EnhancedSimulationPage() {
                   pr: 1,
                   flex: 1
                 }}>
-                  <ShotSuggestion ballPositions={ballPositions}
+                  <ShotSuggestion
+                    ballPositions={ballPositions}
                     playerLevel={playerLevel}
                     tableDimensions={{ width: TABLE_WIDTH, height: TABLE_HEIGHT }}
                     onApplySuggestion={handleApplySuggestion}
-                    isSimulationStarted={simulationStarted}
+                    isSimulationStarted={simulationStarted && !simulationPaused}
                   />
                 </Box>
               </Card>
