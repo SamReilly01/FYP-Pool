@@ -390,7 +390,7 @@ export default function EnhancedSimulationPage() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [simulationName, setSimulationName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // State for expanded info
   const [showHelp, setShowHelp] = useState(false);
 
@@ -816,7 +816,7 @@ export default function EnhancedSimulationPage() {
     showNotification(`Shot suggestion applied: ${suggestion.name}`, "info");
   };
 
-      // Handler for aim changes from AimAssistant
+  // Handler for aim changes from AimAssistant
   const handleAimChange = (aimParams) => {
     setAimParameters(aimParams);
     setShowShotLine(true);
@@ -1248,7 +1248,7 @@ export default function EnhancedSimulationPage() {
         return <SportsIcon fontSize="small" />;
     }
   };
-  
+
   return (
     <Box>
       <Header>
@@ -1470,7 +1470,7 @@ export default function EnhancedSimulationPage() {
                               transition: simulationStarted ? 'none' : 'left 0.05s linear, top 0.05s linear',
                             }}
                           >
-                            {(ball.color === 'red' || ball.color === 'yellow') && ball.number && (
+                            {(ball.color === 'red' || ball.color === 'yellow' || ball.color === 'black') && ball.number && (
                               <div style={{
                                 position: 'absolute',
                                 top: '50%',
@@ -1485,7 +1485,8 @@ export default function EnhancedSimulationPage() {
                                 justifyContent: 'center',
                                 fontSize: `${Math.max(8 * scaleX, 8)}px`,
                                 fontWeight: 'bold',
-                                color: ball.color === 'yellow' ? 'black' : 'red'
+                                color: ball.color === 'yellow' ? 'black' :
+                                  ball.color === 'black' ? 'white' : 'red'
                               }}>
                                 {ball.number}
                               </div>
@@ -1587,467 +1588,467 @@ export default function EnhancedSimulationPage() {
                         </svg>
                       )}
 
-  {/* Render ball trajectories */}
-                     {showTrajectories && simulationStarted && ballPositions.map((ball, index) => {
-                       if (!ball.trajectoryPoints || ball.trajectoryPoints.length < 2) return null;
+                      {/* Render ball trajectories */}
+                      {showTrajectories && simulationStarted && ballPositions.map((ball, index) => {
+                        if (!ball.trajectoryPoints || ball.trajectoryPoints.length < 2) return null;
 
-                       const scaleX = imageSize.width / TABLE_WIDTH;
-                       const scaleY = imageSize.height / TABLE_HEIGHT;
-                       let pathData = `M ${ball.trajectoryPoints[0].x * scaleX} ${ball.trajectoryPoints[0].y * scaleY}`;
+                        const scaleX = imageSize.width / TABLE_WIDTH;
+                        const scaleY = imageSize.height / TABLE_HEIGHT;
+                        let pathData = `M ${ball.trajectoryPoints[0].x * scaleX} ${ball.trajectoryPoints[0].y * scaleY}`;
 
-                       ball.trajectoryPoints.forEach((point, i) => {
-                         if (i > 0) {
-                           pathData += ` L ${point.x * scaleX} ${point.y * scaleY}`;
-                         }
-                       });
+                        ball.trajectoryPoints.forEach((point, i) => {
+                          if (i > 0) {
+                            pathData += ` L ${point.x * scaleX} ${point.y * scaleY}`;
+                          }
+                        });
 
-                       return (
-                         <svg
-                           key={`trajectory-${index}`}
-                           style={{
-                             position: 'absolute',
-                             top: 0,
-                             left: 0,
-                             width: '100%',
-                             height: '100%',
-                             pointerEvents: 'none',
-                             zIndex: 5,
-                           }} >
-                           <path
-                             d={pathData}
-                             stroke={ball.color === 'white' ? '#888' :
-                               ball.color === 'black' ? '#555' :
-                                 ball.color === 'red' ? '#ff6666' :
-                                   '#ffdd66'}
-                             strokeWidth="2"
-                             fill="none"
-                             strokeDasharray="3,3"
-                             opacity="0.7"
-                           />
-                         </svg>
-                       );
-                     })}
+                        return (
+                          <svg
+                            key={`trajectory-${index}`}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              pointerEvents: 'none',
+                              zIndex: 5,
+                            }} >
+                            <path
+                              d={pathData}
+                              stroke={ball.color === 'white' ? '#888' :
+                                ball.color === 'black' ? '#555' :
+                                  ball.color === 'red' ? '#ff6666' :
+                                    '#ffdd66'}
+                              strokeWidth="2"
+                              fill="none"
+                              strokeDasharray="3,3"
+                              opacity="0.7"
+                            />
+                          </svg>
+                        );
+                      })}
 
-                     {/* Debug elements - only visible when debug mode is enabled */}
-                     {showDebugInfo && (
-                       <>
-                         {/* Pocket positions */}
-                         {POCKET_POSITIONS.map((pocket, index) => {
-                           const scaleX = imageSize.width / TABLE_WIDTH;
-                           const scaleY = imageSize.height / TABLE_HEIGHT;
+                      {/* Debug elements - only visible when debug mode is enabled */}
+                      {showDebugInfo && (
+                        <>
+                          {/* Pocket positions */}
+                          {POCKET_POSITIONS.map((pocket, index) => {
+                            const scaleX = imageSize.width / TABLE_WIDTH;
+                            const scaleY = imageSize.height / TABLE_HEIGHT;
 
-                           return (
-                             <div
-                               key={`pocket-${index}`}
-                               style={{
-                                 position: 'absolute',
-                                 top: `${pocket.y * scaleY}px`,
-                                 left: `${pocket.x * scaleX}px`,
-                                 width: `${POCKET_RADIUS * 2 * scaleX}px`,
-                                 height: `${POCKET_RADIUS * 2 * scaleY}px`,
-                                 border: '1px dashed red',
-                                 borderRadius: '50%',
-                                 transform: 'translate(-50%, -50%)',
-                                 zIndex: 1,
-                                 pointerEvents: 'none',
-                               }}
-                             />
-                           );
-                         })}
+                            return (
+                              <div
+                                key={`pocket-${index}`}
+                                style={{
+                                  position: 'absolute',
+                                  top: `${pocket.y * scaleY}px`,
+                                  left: `${pocket.x * scaleX}px`,
+                                  width: `${POCKET_RADIUS * 2 * scaleX}px`,
+                                  height: `${POCKET_RADIUS * 2 * scaleY}px`,
+                                  border: '1px dashed red',
+                                  borderRadius: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  zIndex: 1,
+                                  pointerEvents: 'none',
+                                }}
+                              />
+                            );
+                          })}
 
-                         {/* Table bounds outline */}
-                         {tableBounds && (
-                           <div
-                             style={{
-                               position: 'absolute',
-                               top: 0,
-                               left: 0,
-                               width: '100%',
-                               height: '100%',
-                               border: '2px dashed #6930c3',
-                               zIndex: 1,
-                               pointerEvents: 'none',
-                             }}
-                           />
-                         )}
-                       </>
-                     )}
-                   </div>
-                 ) : (
-                   <Typography color="textSecondary">
-                     No processed image available
-                   </Typography>
-                 )}
-               </SimulationView>
+                          {/* Table bounds outline */}
+                          {tableBounds && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                border: '2px dashed #6930c3',
+                                zIndex: 1,
+                                pointerEvents: 'none',
+                              }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <Typography color="textSecondary">
+                      No processed image available
+                    </Typography>
+                  )}
+                </SimulationView>
 
-               {/* Simulation controls toolbar */}
-               <Box sx={{
-                 display: 'flex',
-                 alignItems: 'center',
-                 justifyContent: 'space-between',
-                 p: 2,
-                 borderTop: '1px solid rgba(0,0,0,0.1)'
-               }}>
-                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                   <Button
-                     variant="contained"
-                     color={simulationPaused ? "success" : simulationStarted ? "warning" : "primary"}
-                     startIcon={
-                       simulationStarted ?
-                         (simulationPaused ? <PlayArrowIcon /> : <PauseIcon />) :
-                         <PlayArrowIcon />
-                     }
-                     onClick={handlePlaySimulation}
-                     disabled={loading || error || !processedImage}
-                     sx={{
-                       borderRadius: 4,
-                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                       mr: 1
-                     }}
-                   >
-                     {simulationStarted ?
-                       (simulationPaused ? 'Resume' : 'Pause') :
-                       'Start Simulation'}
-                   </Button>
+                {/* Simulation controls toolbar */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 2,
+                  borderTop: '1px solid rgba(0,0,0,0.1)'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Button
+                      variant="contained"
+                      color={simulationPaused ? "success" : simulationStarted ? "warning" : "primary"}
+                      startIcon={
+                        simulationStarted ?
+                          (simulationPaused ? <PlayArrowIcon /> : <PauseIcon />) :
+                          <PlayArrowIcon />
+                      }
+                      onClick={handlePlaySimulation}
+                      disabled={loading || error || !processedImage}
+                      sx={{
+                        borderRadius: 4,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        mr: 1
+                      }}
+                    >
+                      {simulationStarted ?
+                        (simulationPaused ? 'Resume' : 'Pause') :
+                        'Start Simulation'}
+                    </Button>
 
-                   <Button
-                     variant="outlined"
-                     startIcon={<RestartAltIcon />}
-                     onClick={handleResetSimulation}
-                     disabled={loading || error || !processedImage || (!simulationStarted && !simulationPaused)}
-                     sx={{ borderRadius: 4, mr: 1 }}
-                   >
-                     Reset
-                   </Button>
-                 </Box>
+                    <Button
+                      variant="outlined"
+                      startIcon={<RestartAltIcon />}
+                      onClick={handleResetSimulation}
+                      disabled={loading || error || !processedImage || (!simulationStarted && !simulationPaused)}
+                      sx={{ borderRadius: 4, mr: 1 }}
+                    >
+                      Reset
+                    </Button>
+                  </Box>
 
-                 <Tooltip title="Toggle ball trajectories">
-                   <FormControlLabel
-                     control={
-                       <Switch
-                         size="small"
-                         checked={showTrajectories}
-                         onChange={handleTrajectoryToggle}
-                         color="primary"
-                       />
-                     }
-                     label={
-                       <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
-                         <VisibilityIcon sx={{ fontSize: '0.9rem', mr: 0.5 }} />
-                         Trajectories
-                       </Typography>
-                     }
-                     sx={{ ml: 0 }}
-                   />
-                 </Tooltip>
-               </Box>
-             </CardContent>
-           </SimulationCard>
-         </Grid>
+                  <Tooltip title="Toggle ball trajectories">
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={showTrajectories}
+                          onChange={handleTrajectoryToggle}
+                          color="primary"
+                        />
+                      }
+                      label={
+                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
+                          <VisibilityIcon sx={{ fontSize: '0.9rem', mr: 0.5 }} />
+                          Trajectories
+                        </Typography>
+                      }
+                      sx={{ ml: 0 }}
+                    />
+                  </Tooltip>
+                </Box>
+              </CardContent>
+            </SimulationCard>
+          </Grid>
 
-         {/* Controls and Information Area */}
-         <Grid item xs={12} md={4}>
-           <Grid container spacing={2}>
-             {/* Main Controls Card */}
-             <Grid item xs={12}>
-               <ControlsCard>
-                 <CardContent sx={{ p: 0 }}>
-                   {/* Tab navigation for controls */}
-                   <StyledTabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
-                     <StyledTab
-                       label="Aim Shot"
-                       icon={<AimIcon />}
-                       disabled={simulationStarted && !simulationPaused}
-                     />
-                     <StyledTab
-                       label="Ball Info"
-                       icon={<SportsIcon />}
-                     />
-                     <StyledTab
-                       label="Settings"
-                       icon={<SpeedIcon />}
-                     />
-                   </StyledTabs>
+          {/* Controls and Information Area */}
+          <Grid item xs={12} md={4}>
+            <Grid container spacing={2}>
+              {/* Main Controls Card */}
+              <Grid item xs={12}>
+                <ControlsCard>
+                  <CardContent sx={{ p: 0 }}>
+                    {/* Tab navigation for controls */}
+                    <StyledTabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
+                      <StyledTab
+                        label="Aim Shot"
+                        icon={<AimIcon />}
+                        disabled={simulationStarted && !simulationPaused}
+                      />
+                      <StyledTab
+                        label="Ball Info"
+                        icon={<SportsIcon />}
+                      />
+                      <StyledTab
+                        label="Settings"
+                        icon={<SpeedIcon />}
+                      />
+                    </StyledTabs>
 
-                   {/* Tab 1: AimAssistant */}
-                   <TabPanel value={activeTab} index={0}>
-                     <AimAssistant
-                       ballPositions={ballPositions}
-                       playerLevel={playerLevel}
-                       onAimChange={handleAimChange}
-                       onShoot={handleShoot}
-                       isSimulationStarted={simulationStarted}
-                       activeSuggestion={activeSuggestion}
-                     />
-                   </TabPanel>
+                    {/* Tab 1: AimAssistant */}
+                    <TabPanel value={activeTab} index={0}>
+                      <AimAssistant
+                        ballPositions={ballPositions}
+                        playerLevel={playerLevel}
+                        onAimChange={handleAimChange}
+                        onShoot={handleShoot}
+                        isSimulationStarted={simulationStarted}
+                        activeSuggestion={activeSuggestion}
+                      />
+                    </TabPanel>
 
-                   {/* Tab 2: Ball Information */}
-                   <TabPanel value={activeTab} index={1}>
-                     <Box sx={{ p: 2 }}>
-                       <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-                         <SportsIcon sx={{ mr: 1, color: '#6930c3', fontSize: '1.1rem' }} />
-                         Ball Status
-                       </Typography>
+                    {/* Tab 2: Ball Information */}
+                    <TabPanel value={activeTab} index={1}>
+                      <Box sx={{ p: 2 }}>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                          <SportsIcon sx={{ mr: 1, color: '#6930c3', fontSize: '1.1rem' }} />
+                          Ball Status
+                        </Typography>
 
-                       <Box sx={{
-                         display: 'flex',
-                         flexWrap: 'wrap',
-                         gap: 1,
-                         justifyContent: 'center',
-                         mb: 3,
-                         mt: 2
-                       }}>
-                         {['white', 'red', 'yellow', 'black'].map(color => {
-                           const active = ballPositions.filter(ball => ball.color === color && !ball.pocketed).length;
-                           const pocketed = ballPositions.filter(ball => ball.color === color && ball.pocketed).length;
-                           const total = active + pocketed;
+                        <Box sx={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 1,
+                          justifyContent: 'center',
+                          mb: 3,
+                          mt: 2
+                        }}>
+                          {['white', 'red', 'yellow', 'black'].map(color => {
+                            const active = ballPositions.filter(ball => ball.color === color && !ball.pocketed).length;
+                            const pocketed = ballPositions.filter(ball => ball.color === color && ball.pocketed).length;
+                            const total = active + pocketed;
 
-                           if (total === 0) return null;
+                            if (total === 0) return null;
 
-                           return (
-                             <Paper
-                               key={color}
-                               sx={{
-                                 p: 1.5,
-                                 flex: '1 0 45%',
-                                 minWidth: '120px',
-                                 display: 'flex',
-                                 flexDirection: 'column',
-                                 alignItems: 'center',
-                                 borderRadius: 2,
-                                 boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                               }}
-                             >
-                               <BallVisualization color={color}>
-                                 {(color === 'red' || color === 'yellow') && "1"}
-                               </BallVisualization>
-                               <Typography variant="subtitle2" sx={{ mt: 1, textTransform: 'capitalize' }}>
-                                 {color} Balls
-                               </Typography>
-                               <Typography variant="body2" color="text.secondary">
-                                 {active} active, {pocketed} pocketed
-                               </Typography>
-                             </Paper>
-                           );
-                         })}
-                       </Box>
+                            return (
+                              <Paper
+                                key={color}
+                                sx={{
+                                  p: 1.5,
+                                  flex: '1 0 45%',
+                                  minWidth: '120px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  borderRadius: 2,
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                }}
+                              >
+                                <BallVisualization color={color}>
+                                  {(color === 'red' || color === 'yellow') && "1"}
+                                </BallVisualization>
+                                <Typography variant="subtitle2" sx={{ mt: 1, textTransform: 'capitalize' }}>
+                                  {color} Balls
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {active} active, {pocketed} pocketed
+                                </Typography>
+                              </Paper>
+                            );
+                          })}
+                        </Box>
 
-                       {/* Pocketed balls section */}
-                       {pocketedBalls.length > 0 && (
-                         <>
-                           <Divider sx={{ my: 2 }} />
-                           <Typography variant="subtitle2" gutterBottom>
-                             Recently Pocketed:
-                           </Typography>
-                           <Box sx={{
-                             display: 'flex',
-                             flexWrap: 'wrap',
-                             gap: 1,
-                             justifyContent: 'center',
-                             my: 1
-                           }}>
-                             {pocketedBalls.slice(-8).map((ball, idx) => (
-                               <BallVisualization key={idx} color={ball.color}>
-                                 {(ball.color === 'red' || ball.color === 'yellow') && ball.number && ball.number}
-                               </BallVisualization>
-                             ))}
-                           </Box>
-                         </>
-                       )}
+                        {/* Pocketed balls section */}
+                        {pocketedBalls.length > 0 && (
+                          <>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="subtitle2" gutterBottom>
+                              Recently Pocketed:
+                            </Typography>
+                            <Box sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 1,
+                              justifyContent: 'center',
+                              my: 1
+                            }}>
+                              {pocketedBalls.slice(-8).map((ball, idx) => (
+                                <BallVisualization key={idx} color={ball.color}>
+                                  {(ball.color === 'red' || ball.color === 'yellow') && ball.number && ball.number}
+                                </BallVisualization>
+                              ))}
+                            </Box>
+                          </>
+                        )}
 
-                       {/* Debug toggle */}
-                       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-                         <Button
-                           variant="text"
-                           size="small"
-                           startIcon={<BugReportIcon />}
-                           onClick={toggleDebugInfo}
-                           sx={{ color: showDebugInfo ? '#f44336' : '#6930c3' }}
-                         >
-                           {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
-                         </Button>
-                       </Box>
+                        {/* Debug toggle */}
+                        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                          <Button
+                            variant="text"
+                            size="small"
+                            startIcon={<BugReportIcon />}
+                            onClick={toggleDebugInfo}
+                            sx={{ color: showDebugInfo ? '#f44336' : '#6930c3' }}
+                          >
+                            {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
+                          </Button>
+                        </Box>
 
-                       {/* Debug information section */}
-                       {showDebugInfo && (
-                         <Paper sx={{
-                           mt: 2,
-                           p: 2,
-                           bgcolor: alpha('#6930c3', 0.03),
-                           border: `1px solid ${alpha('#6930c3', 0.1)}`,
-                           borderRadius: 2
-                         }}>
-                           <Typography variant="subtitle2" gutterBottom>Debug Info:</Typography>
-                           <Typography variant="body2" sx={{ mb: 0.5 }}>
-                             Player Level: {playerLevel}
-                           </Typography>
-                           <Typography variant="body2" sx={{ mb: 0.5 }}>
-                             Balls: {ballPositions.length} total, {activeBallCount} active
-                           </Typography>
-                           <Typography variant="body2" sx={{ mb: 0.5 }}>
-                             Simulation Step: {simulationStep}
-                           </Typography>
-                           {simulationParams && (
-                             <Typography variant="body2">
-                               Shot Precision: {simulationParams.shotPrecision.toFixed(2)}
-                             </Typography>
-                           )}
-                         </Paper>
-                       )}
-                     </Box>
-                   </TabPanel>
+                        {/* Debug information section */}
+                        {showDebugInfo && (
+                          <Paper sx={{
+                            mt: 2,
+                            p: 2,
+                            bgcolor: alpha('#6930c3', 0.03),
+                            border: `1px solid ${alpha('#6930c3', 0.1)}`,
+                            borderRadius: 2
+                          }}>
+                            <Typography variant="subtitle2" gutterBottom>Debug Info:</Typography>
+                            <Typography variant="body2" sx={{ mb: 0.5 }}>
+                              Player Level: {playerLevel}
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 0.5 }}>
+                              Balls: {ballPositions.length} total, {activeBallCount} active
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 0.5 }}>
+                              Simulation Step: {simulationStep}
+                            </Typography>
+                            {simulationParams && (
+                              <Typography variant="body2">
+                                Shot Precision: {simulationParams.shotPrecision.toFixed(2)}
+                              </Typography>
+                            )}
+                          </Paper>
+                        )}
+                      </Box>
+                    </TabPanel>
 
-                   {/* Tab 3: Simulation Settings */}
-                   <TabPanel value={activeTab} index={2}>
-                     <Box sx={{ p: 2 }}>
-                       <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-                         <SpeedIcon sx={{ mr: 1, color: '#6930c3', fontSize: '1.1rem' }} />
-                         Simulation Settings
-                       </Typography>
+                    {/* Tab 3: Simulation Settings */}
+                    <TabPanel value={activeTab} index={2}>
+                      <Box sx={{ p: 2 }}>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                          <SpeedIcon sx={{ mr: 1, color: '#6930c3', fontSize: '1.1rem' }} />
+                          Simulation Settings
+                        </Typography>
 
-                       {/* Simulation speed control */}
-                       <Box sx={{ mb: 3 }}>
-                         <Typography variant="body2" gutterBottom>
-                           Simulation Speed: {simulationSpeed.toFixed(1)}x
-                         </Typography>
-                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                           <Typography variant="caption" sx={{ minWidth: 40 }}>Slow</Typography>
-                           <Slider
-                             value={simulationSpeed}
-                             onChange={handleSpeedChange}
-                             step={0.1}
-                             min={0.1}
-                             max={3}
-                             marks
-                             sx={{ mx: 2 }}
-                           />
-                           <Typography variant="caption" sx={{ minWidth: 40 }}>Fast</Typography>
-                         </Box>
-                       </Box>
+                        {/* Simulation speed control */}
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="body2" gutterBottom>
+                            Simulation Speed: {simulationSpeed.toFixed(1)}x
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Typography variant="caption" sx={{ minWidth: 40 }}>Slow</Typography>
+                            <Slider
+                              value={simulationSpeed}
+                              onChange={handleSpeedChange}
+                              step={0.1}
+                              min={0.1}
+                              max={3}
+                              marks
+                              sx={{ mx: 2 }}
+                            />
+                            <Typography variant="caption" sx={{ minWidth: 40 }}>Fast</Typography>
+                          </Box>
+                        </Box>
 
-                       <Divider sx={{ my: 2 }} />
+                        <Divider sx={{ my: 2 }} />
 
-                       {/* Other simulation options */}
-                       <FormControlLabel
-                         control={
-                           <Switch
-                             checked={showTrajectories}
-                             onChange={handleTrajectoryToggle}
-                             color="primary"
-                           />
-                         }
-                         label="Show Ball Trajectories"
-                         sx={{ mb: 1.5, display: 'block' }}
-                       />
+                        {/* Other simulation options */}
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={showTrajectories}
+                              onChange={handleTrajectoryToggle}
+                              color="primary"
+                            />
+                          }
+                          label="Show Ball Trajectories"
+                          sx={{ mb: 1.5, display: 'block' }}
+                        />
 
-                       {/* Save button */}
-                       <SaveButton
-                         fullWidth
-                         startIcon={<SaveIcon />}
-                         onClick={handleOpenSaveDialog}
-                         disabled={loading || !processedImage || (!simulationStarted && !simulationPaused && pocketedBalls.length === 0)}
-                         sx={{ mt: 2 }}
-                       >
-                         Save Simulation
-                       </SaveButton>
-                     </Box>
-                   </TabPanel>
-                 </CardContent>
-               </ControlsCard>
-             </Grid>
+                        {/* Save button */}
+                        <SaveButton
+                          fullWidth
+                          startIcon={<SaveIcon />}
+                          onClick={handleOpenSaveDialog}
+                          disabled={loading || !processedImage || (!simulationStarted && !simulationPaused && pocketedBalls.length === 0)}
+                          sx={{ mt: 2 }}
+                        >
+                          Save Simulation
+                        </SaveButton>
+                      </Box>
+                    </TabPanel>
+                  </CardContent>
+                </ControlsCard>
+              </Grid>
 
-             {/* Shot Suggestions Card - Only show when not actively simulating */}
-             {(!simulationStarted || simulationPaused) && (
-               <Grid item xs={12}>
-                 <ControlsCard sx={{ maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-                   <CardContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                     <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-                         <TrackChangesIcon sx={{ mr: 1, color: '#6930c3' }} />
-                         Shot Suggestions
-                       </Typography>
-                     </Box>
+              {/* Shot Suggestions Card - Only show when not actively simulating */}
+              {(!simulationStarted || simulationPaused) && (
+                <Grid item xs={12}>
+                  <ControlsCard sx={{ maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+                    <CardContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                          <TrackChangesIcon sx={{ mr: 1, color: '#6930c3' }} />
+                          Shot Suggestions
+                        </Typography>
+                      </Box>
 
-                     <Box sx={{
-                       flex: 1,
-                       overflowY: 'auto',
-                       px: 2,
-                       py: 1.5,
-                       '&::-webkit-scrollbar': {
-                         width: '8px',
-                       },
-                       '&::-webkit-scrollbar-track': {
-                         background: '#f1f1f1',
-                         borderRadius: '10px',
-                       },
-                       '&::-webkit-scrollbar-thumb': {
-                         background: '#c1c1c1',
-                         borderRadius: '10px',
-                       },
-                     }}>
-                       <ShotSuggestion
-                         ballPositions={ballPositions}
-                         playerLevel={playerLevel}
-                         tableDimensions={{ width: TABLE_WIDTH, height: TABLE_HEIGHT }}
-                         onApplySuggestion={handleApplySuggestion}
-                         isSimulationStarted={simulationStarted && !simulationPaused}
-                       />
-                     </Box>
-                   </CardContent>
-                 </ControlsCard>
-               </Grid>
-             )}
-           </Grid>
-         </Grid>
-       </Grid>
-     </Container>
+                      <Box sx={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        px: 2,
+                        py: 1.5,
+                        '&::-webkit-scrollbar': {
+                          width: '8px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                          background: '#f1f1f1',
+                          borderRadius: '10px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          background: '#c1c1c1',
+                          borderRadius: '10px',
+                        },
+                      }}>
+                        <ShotSuggestion
+                          ballPositions={ballPositions}
+                          playerLevel={playerLevel}
+                          tableDimensions={{ width: TABLE_WIDTH, height: TABLE_HEIGHT }}
+                          onApplySuggestion={handleApplySuggestion}
+                          isSimulationStarted={simulationStarted && !simulationPaused}
+                        />
+                      </Box>
+                    </CardContent>
+                  </ControlsCard>
+                </Grid>
+              )}
+            </Grid>
+          </Grid>
+        </Grid>
+      </Container>
 
-     {/* Save Simulation Dialog */}
-     <Dialog
-       open={saveDialogOpen}
-       onClose={() => setSaveDialogOpen(false)}
-       PaperProps={{ sx: { borderRadius: 3 } }}
-     >
-       <DialogTitle sx={{
-         bgcolor: alpha('#6930c3', 0.05),
-         borderBottom: `1px solid ${alpha('#6930c3', 0.1)}`
-       }}>
-         Save Simulation Results
-       </DialogTitle>
-       <DialogContent sx={{ pt: 3, minWidth: '400px' }}>
-         <DialogContentText sx={{ mb: 2 }}>
-           Enter a name for this simulation to help you identify it later.
-         </DialogContentText>
-         <TextField
-           autoFocus
-           margin="dense"
-           label="Simulation Name"
-           type="text"
-           fullWidth
-           variant="outlined"
-           value={simulationName}
-           onChange={(e) => setSimulationName(e.target.value)}
-           disabled={isSaving}
-         />
-       </DialogContent>
-       <DialogActions sx={{ p: 2, pt: 0 }}>
-         <Button
-           onClick={() => setSaveDialogOpen(false)}
-           disabled={isSaving}
-           sx={{ borderRadius: 4 }}
-         >
-           Cancel
-         </Button>
-         <SaveButton
-           onClick={handleSaveSimulation}
-           disabled={isSaving || !simulationName.trim()}
-           startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-           sx={{ borderRadius: 4 }}
-         >
-           {isSaving ? 'Saving...' : 'Save Results'}
-         </SaveButton>
-       </DialogActions>
-     </Dialog>
-   </Box>
- );
+      {/* Save Simulation Dialog */}
+      <Dialog
+        open={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{
+          bgcolor: alpha('#6930c3', 0.05),
+          borderBottom: `1px solid ${alpha('#6930c3', 0.1)}`
+        }}>
+          Save Simulation Results
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, minWidth: '400px' }}>
+          <DialogContentText sx={{ mb: 2 }}>
+            Enter a name for this simulation to help you identify it later.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Simulation Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={simulationName}
+            onChange={(e) => setSimulationName(e.target.value)}
+            disabled={isSaving}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button
+            onClick={() => setSaveDialogOpen(false)}
+            disabled={isSaving}
+            sx={{ borderRadius: 4 }}
+          >
+            Cancel
+          </Button>
+          <SaveButton
+            onClick={handleSaveSimulation}
+            disabled={isSaving || !simulationName.trim()}
+            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+            sx={{ borderRadius: 4 }}
+          >
+            {isSaving ? 'Saving...' : 'Save Results'}
+          </SaveButton>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 }

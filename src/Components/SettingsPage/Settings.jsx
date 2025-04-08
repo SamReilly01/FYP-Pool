@@ -6,7 +6,7 @@ import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import { styled, useTheme } from '@mui/material/styles';
+import { styled, useTheme, alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -43,7 +43,6 @@ import InfoIcon from '@mui/icons-material/Info';
 import SportsIcon from '@mui/icons-material/Sports';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -54,6 +53,9 @@ import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import WarningIcon from '@mui/icons-material/Warning';
+import DeleteIcon from '@mui/icons-material/Delete';
+import StorageIcon from '@mui/icons-material/Storage';
+import BugReportIcon from '@mui/icons-material/BugReport';
 
 // Styled components with theme-aware styles
 const Header = styled(Box)(({ theme }) => ({
@@ -314,12 +316,19 @@ export default function SettingsPage() {
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [resetAccountDialogOpen, setResetAccountDialogOpen] = useState(false);
+  const [resetConfirmDialogOpen, setResetConfirmDialogOpen] = useState(false);
+  const [clearCacheDialogOpen, setClearCacheDialogOpen] = useState(false);
 
   // Notification for saving settings
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
   // Theme selection mode
   const [themeMode, setThemeMode] = useState('auto');
+
+  // New state for debug settings
+  const [debugMode, setDebugMode] = useState(localStorage.getItem('debugMode') === 'true');
+  const [simLogging, setSimLogging] = useState(localStorage.getItem('simLogging') === 'true');
+  const [storageInfo, setStorageInfo] = useState(null);
 
   // Load user info and settings on component mount
   useEffect(() => {
@@ -350,7 +359,55 @@ export default function SettingsPage() {
         default: setActiveTab(0);
       }
     }
+
+    // Calculate localStorage usage
+    calculateStorageUsage();
   }, [navigate, location.search]);
+
+  // Calculate localStorage usage
+  const calculateStorageUsage = () => {
+    try {
+      let totalSize = 0;
+      let itemCount = 0;
+      const items = {};
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const value = localStorage.getItem(key);
+        const size = (key.length + value.length) * 2; // UTF-16 uses 2 bytes per character
+
+        totalSize += size;
+        itemCount++;
+        items[key] = {
+          size: size,
+          sizeFormatted: formatBytes(size)
+        };
+      }
+
+      setStorageInfo({
+        totalSize,
+        totalSizeFormatted: formatBytes(totalSize),
+        itemCount,
+        items,
+        percentUsed: Math.min((totalSize / 5242880) * 100, 100).toFixed(1) // 5 MB is the typical limit
+      });
+    } catch (error) {
+      console.error('Error calculating storage usage:', error);
+    }
+  };
+
+  // Format bytes to human-readable format
+  const formatBytes = (bytes, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
 
   // Function to check active route
   const isActive = (route) => path === route;
@@ -362,6 +419,14 @@ export default function SettingsPage() {
     // Update URL with tab parameter (for sharing/bookmarking)
     const tabNames = ['game', 'physics', 'appearance', 'account'];
     navigate(`/settings?tab=${tabNames[newValue]}`, { replace: true });
+  };
+
+  const showNotification = (message, severity = 'info') => {
+    setNotification({
+      open: true,
+      message,
+      severity
+    });
   };
 
   // Handle dark mode toggle
@@ -392,6 +457,22 @@ export default function SettingsPage() {
     // 'manual' mode doesn't change the theme, just indicates user preference overrides system
   };
 
+  // Handle debug mode toggle
+  const handleDebugModeToggle = () => {
+    const newDebugMode = !debugMode;
+    setDebugMode(newDebugMode);
+    localStorage.setItem('debugMode', newDebugMode.toString());
+    showNotification(`Debug mode ${newDebugMode ? 'enabled' : 'disabled'}`, 'info');
+  };
+
+  // Handle simulation logging toggle
+  const handleSimLoggingToggle = () => {
+    const newSimLogging = !simLogging;
+    setSimLogging(newSimLogging);
+    localStorage.setItem('simLogging', newSimLogging.toString());
+    showNotification(`Simulation logging ${newSimLogging ? 'enabled' : 'disabled'}`, 'info');
+  };
+
   // Save all settings
   const handleSaveSettings = () => {
     // Save to localStorage
@@ -411,6 +492,9 @@ export default function SettingsPage() {
       message: 'Settings saved successfully',
       severity: 'success'
     });
+
+    // Recalculate storage usage
+    calculateStorageUsage();
   };
 
   // Reset settings to default
@@ -466,109 +550,177 @@ export default function SettingsPage() {
     }
   };
 
-// Update password with API call
-// Update password with API call
-const handleUpdatePassword = async () => {
-  // Validate passwords match
-  if (!currentPassword) {
-    setNotification({
-      open: true,
-      message: 'Current password is required',
-      severity: 'error'
-    });
-    return;
-  }
-  
-  if (!newPassword) {
-    setNotification({
-      open: true,
-      message: 'New password is required',
-      severity: 'error'
-    });
-    return;
-  }
-  
-  if (newPassword !== confirmPassword) {
-    setNotification({
-      open: true,
-      message: 'New passwords do not match',
-      severity: 'error'
-    });
-    return;
-  }
-  
-  try {
-    // Show progress indicator
-    setIsUpdatingPassword(true);
-    
-    // Log for debugging
-    console.log("Starting password update process");
-    console.log("User auth status:", !!localStorage.getItem('token'));
-    
-    // Call the API service to update password
-    const result = await updateUserPassword(currentPassword, newPassword);
-    
-    console.log("Password update successful:", result);
-    
-    // Show success notification
-    setNotification({
-      open: true,
-      message: 'Password updated successfully',
-      severity: 'success'
-    });
-    
-    // Clear password fields
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  } catch (error) {
-    // Enhanced error logging
-    console.error('Error updating password:', error);
-    
-    // Show user-friendly error notification
-    setNotification({
-      open: true,
-      message: error.error || 'Failed to update password',
-      severity: 'error'
-    });
-  } finally {
-    setIsUpdatingPassword(false);
-  }
-};
+  // Update password with API call
+  const handleUpdatePassword = async () => {
+    // Validate passwords match
+    if (!currentPassword) {
+      setNotification({
+        open: true,
+        message: 'Current password is required',
+        severity: 'error'
+      });
+      return;
+    }
 
-  // Handle Reset Account Data
-  const handleResetAccountData = () => {
-    // In a real app, this would call an API to delete user data
-    // For now, we'll just clear localStorage except for auth data
-    const user_id = localStorage.getItem('user_id');
-    const email = localStorage.getItem('userEmail');
-    const token = localStorage.getItem('token');
+    if (!newPassword) {
+      setNotification({
+        open: true,
+        message: 'New password is required',
+        severity: 'error'
+      });
+      return;
+    }
 
-    localStorage.clear();
+    if (newPassword !== confirmPassword) {
+      setNotification({
+        open: true,
+        message: 'New passwords do not match',
+        severity: 'error'
+      });
+      return;
+    }
 
-    // Restore auth data
-    localStorage.setItem('user_id', user_id);
-    localStorage.setItem('userEmail', email);
-    localStorage.setItem('token', token);
+    try {
+      // Show progress indicator
+      setIsUpdatingPassword(true);
 
-    // Reset state
-    setPlayerLevel('intermediate');
-    setDefaultSimulationSpeed(1.0);
-    setShowTrajectories(true);
-    setShowShotSuggestions(true);
-    setEnableSounds(true);
-    setTableFriction(0.98);
-    setBallRestitution(0.9);
+      // Log for debugging
+      console.log("Starting password update process");
+      console.log("User auth status:", !!localStorage.getItem('token'));
 
-    // Close dialog
+      // Call the API service to update password
+      const result = await updateUserPassword(currentPassword, newPassword);
+
+      console.log("Password update successful:", result);
+
+      // Show success notification
+      setNotification({
+        open: true,
+        message: 'Password updated successfully',
+        severity: 'success'
+      });
+
+      // Clear password fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      // Enhanced error logging
+      console.error('Error updating password:', error);
+
+      // Show user-friendly error notification
+      setNotification({
+        open: true,
+        message: error.error || 'Failed to update password',
+        severity: 'error'
+      });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  // Handle Reset Account Data - two step process
+  const handleOpenResetConfirmDialog = () => {
     setResetAccountDialogOpen(false);
+    setResetConfirmDialogOpen(true);
+  };
 
-    // Show notification
-    setNotification({
-      open: true,
-      message: 'Account data has been reset',
-      severity: 'success'
-    });
+  // Handle Reset Account Data (final step)
+  const handleResetAccountData = () => {
+    try {
+      // In a real app, this would call an API to delete user data
+      // For now, we'll just clear localStorage except for auth data
+      const user_id = localStorage.getItem('user_id');
+      const email = localStorage.getItem('userEmail');
+      const token = localStorage.getItem('token');
+
+      localStorage.clear();
+
+      // Restore auth data
+      localStorage.setItem('user_id', user_id);
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('token', token);
+
+      // Reset state
+      setPlayerLevel('intermediate');
+      setDefaultSimulationSpeed(1.0);
+      setShowTrajectories(true);
+      setShowShotSuggestions(true);
+      setEnableSounds(true);
+      setTableFriction(0.98);
+      setBallRestitution(0.9);
+
+      // Close dialogs
+      setResetConfirmDialogOpen(false);
+
+      // Show notification
+      setNotification({
+        open: true,
+        message: 'Account data has been reset',
+        severity: 'success'
+      });
+
+      // Recalculate storage usage
+      calculateStorageUsage();
+    } catch (error) {
+      console.error('Error resetting account data:', error);
+      setNotification({
+        open: true,
+        message: 'Error resetting account data',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Handle clearing browser cache
+  const handleClearCache = () => {
+    try {
+      // Clear localStorage except for auth and essential theme data
+      const user_id = localStorage.getItem('user_id');
+      const email = localStorage.getItem('userEmail');
+      const token = localStorage.getItem('token');
+      const darkModeSetting = localStorage.getItem('darkMode');
+      const themeModeSetting = localStorage.getItem('themeMode');
+
+      // List of items to save
+      const keysToPreserve = [
+        'user_id', 'userEmail', 'token', 'darkMode', 'themeMode',
+        'playerLevel', 'defaultSimulationSpeed', 'showTrajectories',
+        'showShotSuggestions', 'enableSounds', 'ballRestitution', 'tableFriction'
+      ];
+
+      // Find keys to remove
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!keysToPreserve.includes(key)) {
+          keysToRemove.push(key);
+        }
+      }
+
+      // Remove the keys
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // Close dialog
+      setClearCacheDialogOpen(false);
+
+      // Show notification
+      setNotification({
+        open: true,
+        message: `Cleared ${keysToRemove.length} cached items`,
+        severity: 'success'
+      });
+
+      // Recalculate storage usage
+      calculateStorageUsage();
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      setNotification({
+        open: true,
+        message: 'Error clearing cache',
+        severity: 'error'
+      });
+    }
   };
 
   // Close notification
@@ -644,8 +796,7 @@ const handleUpdatePassword = async () => {
             iconPosition="start"
           />
           <Tab
-            icon={<SpeedIcon />}
-            label="Physics Settings"
+            icon={<SpeedIcon />} label="Physics Settings"
             iconPosition="start"
           />
           <Tab
@@ -734,6 +885,9 @@ const handleUpdatePassword = async () => {
                         {defaultSimulationSpeed}x
                       </Typography>
                     </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Controls the simulation playback speed. Higher values make the simulation run faster.
+                    </Typography>
                   </Box>
                 </CardContent>
               </SettingCard>
@@ -788,6 +942,44 @@ const handleUpdatePassword = async () => {
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
                       Play realistic ball collision and pocket sounds
+                    </Typography>
+                  </Box>
+
+                  <Divider sx={{ my: 3 }} />
+
+                  {/* Debug Settings Section */}
+                  <SettingCardTitle>
+                    <BugReportIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
+                    <Typography variant="h6">Developer Options</Typography>
+                  </SettingCardTitle>
+
+                  <Box sx={{ mb: 3 }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={debugMode}
+                          onChange={handleDebugModeToggle}
+                          color="primary"
+                        />
+                      }
+                      label="Debug Mode"
+                    />
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
+                      Shows table boundaries, pocket positions, and other debug information
+                    </Typography>
+
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={simLogging}
+                          onChange={handleSimLoggingToggle}
+                          color="primary"
+                        />
+                      }
+                      label="Simulation Logging"
+                    />
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
+                      Logs detailed simulation data to browser console
                     </Typography>
                   </Box>
                 </CardContent>
@@ -945,7 +1137,7 @@ const handleUpdatePassword = async () => {
           </Box>
         </TabPanel>
 
-        {/* Appearance Settings Tab (NEW) */}
+        {/* Appearance Settings Tab */}
         <TabPanel value={activeTab} index={2}>
           <Grid container spacing={4}>
             <Grid item xs={12} md={6}>
@@ -1073,13 +1265,72 @@ const handleUpdatePassword = async () => {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <VisibilityIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
-                    <Typography variant="h6">Display Settings</Typography>
+                    <StorageIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
+                    <Typography variant="h6">Storage Management</Typography>
                   </SettingCardTitle>
+
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="body2" paragraph>
+                      Manage your local storage usage. Clearing cache data can help if you're experiencing performance issues.
+                    </Typography>
+
+                    {storageInfo && (
+                      <>
+                        <Box sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          mb: 1
+                        }}>
+                          <Typography variant="body2">Storage Usage:</Typography>
+                          <Typography variant="body2" color={
+                            parseFloat(storageInfo.percentUsed) > 80 ? 'error.main' :
+                              parseFloat(storageInfo.percentUsed) > 50 ? 'warning.main' : 'success.main'
+                          }>
+                            {storageInfo.totalSizeFormatted}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{
+                          mb: 2,
+                          width: '100%',
+                          height: 8,
+                          bgcolor: 'rgba(0,0,0,0.1)',
+                          borderRadius: 4,
+                          overflow: 'hidden'
+                        }}>
+                          <Box sx={{
+                            height: '100%',
+                            width: `${storageInfo.percentUsed}%`,
+                            bgcolor: parseFloat(storageInfo.percentUsed) > 80 ? 'error.main' :
+                              parseFloat(storageInfo.percentUsed) > 50 ? 'warning.main' : 'success.main',
+                            borderRadius: 4
+                          }} />
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          {storageInfo.itemCount} stored items using {storageInfo.percentUsed}% of available space
+                        </Typography>
+
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<DeleteIcon />}
+                          fullWidth
+                          onClick={() => setClearCacheDialogOpen(true)}
+                          sx={{ mt: 2, borderRadius: 2 }}
+                        >
+                          Clear Cached Data
+                        </Button>
+                      </>
+                    )}
+                  </Box>
+
+                  <Divider sx={{ my: 3 }} />
 
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" paragraph>
-                      Dark mode helps reduce eye strain by using darker colors and can save battery on devices with OLED screens.
+                      <strong>Dark mode</strong> helps reduce eye strain by using darker colors and can save battery on devices with OLED screens.
                     </Typography>
 
                     <Box sx={{
@@ -1104,21 +1355,7 @@ const handleUpdatePassword = async () => {
                         </li>
                       </ul>
                     </Box>
-
-                    <Typography variant="body2" paragraph>
-                      <strong>Auto Theme:</strong> When set to "Auto", the app will automatically switch between light and dark mode based on your system preferences.
-                    </Typography>
-
-                    <Typography variant="body2" paragraph>
-                      <strong>Manual Selection:</strong> Choose either light or dark mode manually to override your system settings.
-                    </Typography>
                   </Box>
-
-                  <Divider sx={{ my: 3 }} />
-
-                  <Typography variant="body2" paragraph sx={{ mb: 4 }}>
-                    Your theme preference is saved and will be applied whenever you return to the application.
-                  </Typography>
                 </CardContent>
               </SettingCard>
             </Grid>
@@ -1240,52 +1477,45 @@ const handleUpdatePassword = async () => {
               <SettingCard>
                 <CardContent sx={{ p: 3 }}>
                   <SettingCardTitle>
-                    <NotificationsIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
-                    <Typography variant="h6">Notification Preferences</Typography>
+                    <StorageIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
+                    <Typography variant="h6">Data Management</Typography>
                   </SettingCardTitle>
 
                   <Box sx={{ mb: 3 }}>
-                    <FormControlLabel
-                      control={<Switch defaultChecked color="primary" />}
-                      label="Email Notifications"
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
-                      Receive emails about simulation results and tips
+                    <Typography variant="body2" paragraph>
+                      Manage your saved data and application state. You can reset your account data or clear the browser cache.
                     </Typography>
 
-                    <FormControlLabel
-                      control={<Switch defaultChecked color="primary" />}
-                      label="Weekly Digest"
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
-                      Get a weekly summary of your practice progress
-                    </Typography>
+                    <Box sx={{
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                      p: 2,
+                      borderRadius: 2,
+                      mb: 3
+                    }}>
+                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                        <InfoIcon sx={{ fontSize: '1rem', mr: 1, color: theme.palette.primary.main }} />
+                        Stored Data Includes:
+                      </Typography>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        <li>
+                          <Typography variant="body2">Saved simulation results</Typography>
+                        </li>
+                        <li>
+                          <Typography variant="body2">User preferences and settings</Typography>
+                        </li>
+                        <li>
+                          <Typography variant="body2">Authentication information</Typography>
+                        </li>
+                      </ul>
+                    </Box>
 
-                    <FormControlLabel
-                      control={<Switch color="primary" />}
-                      label="New Feature Announcements"
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                      Be notified about new app features and updates
-                    </Typography>
-                  </Box>
-
-                  <Divider sx={{ my: 3 }} />
-
-                  <SettingCardTitle>
-                    <WarningIcon sx={{ color: theme.palette.error.main, mr: 1 }} />
-                    <Typography variant="h6" color="error">Advanced Settings</Typography>
-                  </SettingCardTitle>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Clearing your account data will reset all settings and delete saved simulations. This cannot be undone.
-                    </Typography>
                     <Button
                       variant="outlined"
                       color="error"
+                      startIcon={<DeleteIcon />}
                       fullWidth
-                      sx={{ mt: 2, borderRadius: 8 }}
                       onClick={() => setResetAccountDialogOpen(true)}
+                      sx={{ mt: 2, borderRadius: 2 }}
                     >
                       Reset Account Data
                     </Button>
@@ -1306,7 +1536,7 @@ const handleUpdatePassword = async () => {
         </TabPanel>
       </Container>
 
-      {/* Reset Account Confirmation Dialog */}
+      {/* Reset Account Confirmation Dialog - First Step */}
       <Dialog
         open={resetAccountDialogOpen}
         onClose={() => setResetAccountDialogOpen(false)}
@@ -1334,12 +1564,94 @@ const handleUpdatePassword = async () => {
             Cancel
           </Button>
           <Button
-            onClick={handleResetAccountData}
+            onClick={handleOpenResetConfirmDialog}
             variant="contained"
             color="error"
             sx={{ borderRadius: 2 }}
           >
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reset Account Final Confirmation Dialog */}
+      <Dialog
+        open={resetConfirmDialogOpen}
+        onClose={() => setResetConfirmDialogOpen(false)}
+        aria-labelledby="reset-confirm-dialog-title"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1
+          }
+        }} >
+        <DialogTitle id="reset-confirm-dialog-title" sx={{ bgcolor: 'error.main', color: 'white' }}>
+          Final Confirmation
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <DialogContentText sx={{ fontWeight: 'bold', color: 'error.main', mb: 2 }}>
+            This is a destructive action that cannot be undone!
+          </DialogContentText>
+          <DialogContentText>
+            All your saved simulations, game settings, and preferences will be permanently deleted.
+            Only your account information will be preserved.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setResetConfirmDialogOpen(false)}
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleResetAccountData}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteIcon />}
+            sx={{ borderRadius: 2 }}
+          >
             Reset All Data
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Clear Cache Dialog */}
+      <Dialog
+        open={clearCacheDialogOpen}
+        onClose={() => setClearCacheDialogOpen(false)}
+        aria-labelledby="clear-cache-dialog-title"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle id="clear-cache-dialog-title">
+          Clear Cached Data
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will clear temporary data and cached simulations, but preserve your main settings and account information.
+            This can help if you're experiencing performance issues.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setClearCacheDialogOpen(false)}
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleClearCache}
+            variant="contained"
+            color="primary"
+            startIcon={<DeleteIcon />}
+            sx={{ borderRadius: 2 }}
+          >
+            Clear Cache
           </Button>
         </DialogActions>
       </Dialog>
