@@ -50,10 +50,348 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import SportsBilliards from '@mui/icons-material/SportsEsports';
+import CloseIcon from '@mui/icons-material/Close';
 
 // Import components
 import ShotSuggestion from './ShotSuggestion';
 import AimAssistant from './AimAssistant';
+
+// Interactive Pool Controls Component
+const InteractivePoolControls = ({
+  ballPositions,
+  setAimParameters,
+  aimParameters,
+  setShowShotLine,
+  showShotLine,
+  imageSize,
+  containerRef,
+  onShoot,
+  isSimulationStarted,
+  isSimulationPaused,
+  setIsManualAiming,
+  setActiveSuggestion
+}) => {
+  const [isDraggingCue, setIsDraggingCue] = useState(false);
+  const [isDraggingPower, setIsDraggingPower] = useState(false);
+  const [startAngle, setStartAngle] = useState(null);
+  const powerMeterRef = useRef(null);
+
+  // Find the white cue ball
+  const cueBall = ballPositions.find(ball => ball.color === 'white' && !ball.pocketed);
+
+  // Get table dimensions
+  const scaleX = imageSize.width / TABLE_WIDTH;
+  const scaleY = imageSize.height / TABLE_HEIGHT;
+
+  // Convert table coordinates to screen coordinates
+  const getScreenCoords = (tableX, tableY) => ({
+    x: tableX * scaleX,
+    y: tableY * scaleY
+  });
+
+  // Convert screen coordinates to table coordinates
+  const getTableCoords = (screenX, screenY) => ({
+    x: screenX / scaleX,
+    y: screenY / scaleY
+  });
+
+  // Calculate angle between two points
+  const calculateAngle = (centerX, centerY, pointX, pointY) => {
+    const dx = pointX - centerX;
+    const dy = pointY - centerY;
+    // Calculate angle in radians and convert to degrees
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    // Convert to 0-360 range
+    if (angle < 0) angle += 360;
+    return angle;
+  };
+
+  // Handle mouse/touch down on cue ball
+  const handleCueBallDown = (e) => {
+    if (isSimulationStarted && !isSimulationPaused) return;
+
+    e.preventDefault();
+    const rect = containerRef.current.getBoundingClientRect();
+
+    // Get mouse/touch position relative to container
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    // Calculate position relative to container
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+
+    // Get cue ball screen coordinates
+    const ballPos = getScreenCoords(cueBall.x, cueBall.y);
+
+    // Calculate initial angle
+    const initialAngle = calculateAngle(ballPos.x, ballPos.y, mouseX, mouseY);
+    setStartAngle(initialAngle);
+
+    // Update aim parameters with initial angle
+    setAimParameters(prev => ({
+      ...prev,
+      angle: initialAngle
+    }));
+
+    // Show the shot line
+    setShowShotLine(true);
+    setIsManualAiming(true);
+    setActiveSuggestion(null);
+
+    // Start dragging
+    setIsDraggingCue(true);
+
+    // Add document-level event listeners
+    document.addEventListener('mousemove', handleCueMove);
+    document.addEventListener('touchmove', handleCueMove, { passive: false });
+    document.addEventListener('mouseup', handleCueUp);
+    document.addEventListener('touchend', handleCueUp);
+  };
+
+  // Handle mouse/touch move while dragging cue
+  const handleCueMove = (e) => {
+    if (!isDraggingCue) return;
+
+    e.preventDefault();
+    const rect = containerRef.current.getBoundingClientRect();
+
+    // Get mouse/touch position
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    // Calculate position relative to container
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+
+    // Get cue ball screen coordinates
+    const ballPos = getScreenCoords(cueBall.x, cueBall.y);
+
+    // Calculate new angle
+    const newAngle = calculateAngle(ballPos.x, ballPos.y, mouseX, mouseY);
+
+    // Update aim parameters
+    setAimParameters(prev => ({
+      ...prev,
+      angle: newAngle
+    }));
+  };
+
+  // Handle mouse/touch up after dragging cue
+  const handleCueUp = () => {
+    if (!isDraggingCue) return;
+
+    setIsDraggingCue(false);
+
+    // Remove document-level event listeners
+    document.removeEventListener('mousemove', handleCueMove);
+    document.removeEventListener('touchmove', handleCueMove);
+    document.removeEventListener('mouseup', handleCueUp);
+    document.removeEventListener('touchend', handleCueUp);
+  };
+
+  // Handle mouse/touch down on power meter
+  const handlePowerDown = (e) => {
+    if (isSimulationStarted && !isSimulationPaused) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    setIsDraggingPower(true);
+    updatePowerFromPosition(e);
+
+    // Add document-level event listeners
+    document.addEventListener('mousemove', handlePowerMove);
+    document.addEventListener('touchmove', handlePowerMove, { passive: false });
+    document.addEventListener('mouseup', handlePowerUp);
+    document.addEventListener('touchend', handlePowerUp);
+  };
+
+  // Handle mouse/touch move while dragging power meter
+  const handlePowerMove = (e) => {
+    if (!isDraggingPower) return;
+
+    e.preventDefault();
+    updatePowerFromPosition(e);
+  };
+
+  // Handle mouse/touch up after dragging power meter
+  const handlePowerUp = () => {
+    setIsDraggingPower(false);
+
+    // Remove document-level event listeners
+    document.removeEventListener('mousemove', handlePowerMove);
+    document.removeEventListener('touchmove', handlePowerMove);
+    document.removeEventListener('mouseup', handlePowerUp);
+    document.removeEventListener('touchend', handlePowerUp);
+  };
+
+  // Update power based on mouse/touch position
+  const updatePowerFromPosition = (e) => {
+    if (!powerMeterRef.current) return;
+
+    // Get power meter element position
+    const rect = powerMeterRef.current.getBoundingClientRect();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    // Calculate relative position (0 at bottom, 1 at top)
+    const relativePosition = 1 - (clientY - rect.top) / rect.height;
+
+    // Clamp power between 0.1 and 1
+    const newPower = Math.max(0.1, Math.min(1, relativePosition));
+
+    // Update aim parameters
+    setAimParameters(prev => ({
+      ...prev,
+      power: newPower
+    }));
+  };
+
+  // Handle take shot
+  const handleTakeShot = () => {
+    if (onShoot) {
+      onShoot(aimParameters);
+    }
+  };
+
+  // If simulation is running, don't render interactive controls
+  if (isSimulationStarted && !isSimulationPaused) return null;
+  if (!cueBall) return null;
+
+  // Get cue ball position in screen coordinates
+  const ballScreenPos = getScreenCoords(cueBall.x, cueBall.y);
+
+  return (
+    <>
+      {/* Interactive area for cue ball */}
+      <div
+        style={{
+          position: 'absolute',
+          top: ballScreenPos.y - 40,
+          left: ballScreenPos.x - 40,
+          width: 80,
+          height: 80,
+          borderRadius: '50%',
+          cursor: 'grab',
+          zIndex: 200,
+          opacity: 0.2,  // Make slightly visible for better UX
+          backgroundColor: '#fff',
+          border: '2px solid rgba(105, 48, 195, 0.5)',
+        }}
+        onMouseDown={handleCueBallDown}
+        onTouchStart={handleCueBallDown}
+      />
+
+      {/* Interactive power meter */}
+      <div
+        ref={powerMeterRef}
+        style={{
+          position: 'absolute',
+          left: '-50px', 
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '30px',
+          height: '260px',
+          backgroundColor: '#333',
+          borderRadius: '15px',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+          border: '2px solid #222',
+          overflow: 'hidden',
+          cursor: isDraggingPower ? 'grabbing' : 'grab',
+          zIndex: 1000, // Increased z-index to ensure visibility
+          display: (!isSimulationStarted || isSimulationPaused) && cueBall ? 'block' : 'none',
+        }}
+        onMouseDown={handlePowerDown}
+        onTouchStart={handlePowerDown}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: `${aimParameters.power * 100}%`,
+            background: aimParameters.power > 0.7 ?
+              'linear-gradient(to top, #e63946, #ff9f1c)' :
+              'linear-gradient(to top, #4cc9f0, #4361ee)',
+            transition: isDraggingPower ? 'none' : 'height 0.2s ease-out',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '10px',
+            height: '240px',
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1))',
+            borderRadius: '5px',
+            pointerEvents: 'none',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '-30px',
+            left: '0',
+            width: '100%',
+            textAlign: 'center',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            backgroundColor: '#222',
+            padding: '4px 0',
+            borderRadius: '10px 10px 0 0',
+            pointerEvents: 'none',
+          }}
+        >
+          POWER
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '-25px',
+            left: '0',
+            width: '100%',
+            textAlign: 'center',
+            color: 'white',
+            fontSize: '11px',
+            backgroundColor: '#222',
+            padding: '2px 0',
+            borderRadius: '0 0 10px 10px',
+            pointerEvents: 'none',
+          }}
+        >
+          {Math.round(aimParameters.power * 100)}%
+        </div>
+      </div>
+
+      {/* Shoot button */}
+      <button
+        style={{
+          position: 'absolute',
+          right: '0px',
+          bottom: '0px',
+          backgroundColor: '#6930c3',
+          color: 'white',
+          borderRadius: '25px',
+          padding: '12px 25px',
+          border: 'none',
+          fontWeight: 'bold',
+          fontSize: '16px',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+          cursor: 'pointer',
+          zIndex: 100,
+          //display: (!isSimulationStarted || isSimulationPaused) && cueBall && showShotLine ? 'block' : 'none',
+        }}
+        onClick={handleTakeShot}
+      >
+        Take Shot
+      </button>
+    </>
+  );
+};
 
 // TabPanel component for tabbed interface
 function TabPanel(props) {
@@ -167,13 +505,14 @@ const SimulationCardHeader = styled(CardHeader)(({ theme }) => ({
   padding: theme.spacing(2, 3),
 }));
 
+// UPDATED: Changed overflow to 'visible'
 const SimulationView = styled(Box)(({ theme }) => ({
   flex: 1,
   position: 'relative',
   padding: theme.spacing(2),
   backgroundColor: '#f8f9fa',
   borderRadius: theme.spacing(1),
-  overflow: 'hidden',
+  overflow: 'visible', // Changed from 'hidden' to 'visible' to ensure elements can extend outside
   minHeight: 500,
   display: 'flex',
   justifyContent: 'center',
@@ -341,6 +680,85 @@ function isInPocket(ball) {
 const DEFAULT_TABLE_WIDTH = 800;
 const DEFAULT_TABLE_HEIGHT = 400;
 
+// Standalone power control component for backup
+const StandalonePowerControl = ({ onPowerChange, initialPower = 0.5, disabled = false }) => {
+  const [power, setPower] = useState(initialPower);
+  const powerBarRef = useRef(null);
+
+  const handlePowerChange = (e) => {
+    if (disabled) return;
+
+    const rect = powerBarRef.current.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+    const barHeight = rect.height;
+
+    // Calculate power (0 at bottom, 1 at top)
+    const newPower = Math.max(0.1, Math.min(1, 1 - (clickY / barHeight)));
+    setPower(newPower);
+
+    // Notify parent component
+    if (onPowerChange) {
+      onPowerChange(newPower);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        position: 'fixed',
+        left: '625px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 1000,
+        display: disabled ? 'none' : 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        background: 'rgba(0,0,0,0.7)',
+        padding: '10px',
+        borderRadius: '10px',
+        boxShadow: '0 0 10px rgba(0,0,0,0.5)'
+      }}
+    >
+      <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
+        POWER
+      </Typography>
+
+      <Box
+        ref={powerBarRef}
+        sx={{
+          width: '30px',
+          height: '200px',
+          backgroundColor: '#333',
+          borderRadius: '15px',
+          border: '2px solid #222',
+          overflow: 'hidden',
+          position: 'relative',
+          cursor: disabled ? 'default' : 'pointer'
+        }}
+        onClick={handlePowerChange}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: `${power * 100}%`,
+            background: power > 0.7 ?
+              'linear-gradient(to top, #e63946, #ff9f1c)' :
+              'linear-gradient(to top, #4cc9f0, #4361ee)',
+            transition: 'height 0.2s ease-out'
+          }}
+        />
+      </Box>
+
+      <Typography variant="caption" sx={{ color: 'white', mt: 1 }}>
+        {Math.round(power * 100)}%
+      </Typography>
+    </Box>
+  );
+};
+
 export default function EnhancedSimulationPage() {
   // States, refs, and navigate
   const location = useLocation();
@@ -364,6 +782,7 @@ export default function EnhancedSimulationPage() {
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [simulationStarted, setSimulationStarted] = useState(false);
   const [simulationPaused, setSimulationPaused] = useState(false);
+  const [showShotLine, setShowShotLine] = useState(false);
   const [tableBounds, setTableBounds] = useState(null);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [simulationStep, setSimulationStep] = useState(0);
@@ -381,7 +800,6 @@ export default function EnhancedSimulationPage() {
 
   // New state for shot suggestions and aiming
   const [activeSuggestion, setActiveSuggestion] = useState(null);
-  const [showShotLine, setShowShotLine] = useState(false);
   const [aimParameters, setAimParameters] = useState({ angle: 45, power: 0.5 });
   const [isManualAiming, setIsManualAiming] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -394,8 +812,32 @@ export default function EnhancedSimulationPage() {
   // State for expanded info
   const [showHelp, setShowHelp] = useState(false);
 
+  // State for direct controls mode
+  const [useDirectControls, setUseDirectControls] = useState(true);
+
+  // State for direct controls guide
+  const [showDirectControlsGuide, setShowDirectControlsGuide] = useState(true);
+
   // Get user_id from localStorage
   const user_id = localStorage.getItem('user_id');
+
+  // Effect for showing direct controls guide
+  useEffect(() => {
+    // Only show the guide if direct controls are enabled and we're not in a simulation
+    if (useDirectControls && !simulationStarted && !localStorage.getItem('directControlsGuideShown')) {
+      setShowDirectControlsGuide(true);
+
+      // Set a timer to hide the guide after 8 seconds
+      const timer = setTimeout(() => {
+        setShowDirectControlsGuide(false);
+        localStorage.setItem('directControlsGuideShown', 'true');
+      }, 8000);
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowDirectControlsGuide(false);
+    }
+  }, [useDirectControls, simulationStarted]);
 
   // Calculate ball counts by color
   const ballCounts = {
@@ -404,6 +846,12 @@ export default function EnhancedSimulationPage() {
     yellow: ballPositions.filter(ball => ball.color === 'yellow' && !ball.pocketed).length,
     black: ballPositions.filter(ball => ball.color === 'black' && !ball.pocketed).length,
   };
+
+  // Debug logging for aim parameters
+  useEffect(() => {
+    console.log("Aim Parameters:", aimParameters);
+    console.log("Show Shot Line:", showShotLine);
+  }, [aimParameters, showShotLine]);
 
   // Show notification
   const showNotification = (message, severity = 'info') => {
@@ -819,13 +1267,24 @@ export default function EnhancedSimulationPage() {
   // Handler for aim changes from AimAssistant
   const handleAimChange = (aimParams) => {
     setAimParameters(aimParams);
-    setShowShotLine(true);
+    setShowShotLine(true); // This line is crucial
     setIsManualAiming(true);
 
     // Cancel any active suggestion when manually aiming
     if (activeSuggestion) {
       setActiveSuggestion(null);
     }
+  };
+
+  // Function to handle dragging on the power meter directly
+  const handlePowerMeterDrag = (newPowerValue) => {
+    setAimParameters(prev => ({
+      ...prev,
+      power: newPowerValue
+    }));
+
+    // Ensure shot line is visible
+    setShowShotLine(true);
   };
 
   // Handler for taking a shot
@@ -1247,9 +1706,7 @@ export default function EnhancedSimulationPage() {
       default:
         return <SportsIcon fontSize="small" />;
     }
-  };
-
-  return (
+  }; return (
     <Box>
       <Header>
         <NavBar>
@@ -1383,7 +1840,7 @@ export default function EnhancedSimulationPage() {
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <AimIcon fontSize="small" sx={{ mr: 1, color: '#6930c3' }} />
-                          <Typography variant="body2">Use the <b>Aim Shot</b> tab to adjust shot power and angle</Typography>
+                          <Typography variant="body2">Click and drag around the white ball to aim</Typography>
                         </Box>
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -1421,7 +1878,7 @@ export default function EnhancedSimulationPage() {
                         display: 'block',
                         width: '100%',
                         height: '400px',
-                        overflow: 'hidden'
+                        overflow: 'visible' // Changed from 'hidden' to 'visible'
                       }}
                     >
                       <img
@@ -1495,98 +1952,157 @@ export default function EnhancedSimulationPage() {
                         );
                       })}
 
-                      {/* Shot aiming line */}
-                      {showShotLine && !simulationStarted && (
-                        <svg
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            pointerEvents: 'none',
-                            zIndex: 15,
-                          }}
-                        >
-                          {(() => {
-                            const cueBall = ballPositions.find(ball => ball.color === "white" && !ball.pocketed);
-                            if (!cueBall) return null;
+                      {/* Pool Cue Visualization - Enhanced */}
+                      {showShotLine && !simulationStarted && (() => {
+                        const cueBall = ballPositions.find(ball => ball.color === "white" && !ball.pocketed);
+                        if (!cueBall) return null;
 
-                            const scaleX = imageSize.width / TABLE_WIDTH;
-                            const scaleY = imageSize.height / TABLE_HEIGHT;
-                            const aimLength = 200;
+                        const scaleX = imageSize.width / TABLE_WIDTH;
+                        const scaleY = imageSize.height / TABLE_HEIGHT;
 
-                            // Use the actual shot direction (aimParameters.angle) for the aim line
-                            const angle = aimParameters.angle;
-                            const radians = angle * (Math.PI / 180);
+                        // Calculate cue start and end positions based on angle
+                        const angle = aimParameters.angle;
+                        const radians = angle * (Math.PI / 180);
 
-                            const ballScreenX = cueBall.x * scaleX;
-                            const ballScreenY = cueBall.y * scaleY;
-                            const endX = ballScreenX + Math.cos(radians) * aimLength;
-                            const endY = ballScreenY + Math.sin(radians) * aimLength;
+                        // The cue ball position
+                        const cueBallX = cueBall.x * scaleX;
+                        const cueBallY = cueBall.y * scaleY;
 
-                            return (
-                              <>
-                                {/* Aim line */}
-                                <line
-                                  x1={ballScreenX}
-                                  y1={ballScreenY}
-                                  x2={endX}
-                                  y2={endY}
-                                  stroke={isManualAiming ? "#ff9f1c" : "#6930c3"}
-                                  strokeWidth="2"
-                                  strokeDasharray="5,5"
-                                />
+                        // NEW: Calculate extended cue length that always goes beyond viewport
+                        const maxDimension = Math.max(imageSize.width, imageSize.height) * 1.5;
+                        const cueLength = maxDimension; // Make cue long enough to always extend beyond the viewport
+                        const aimLength = 180; // Length of the aiming line
 
-                                {/* Cue ball highlight */}
-                                <circle
-                                  cx={ballScreenX}
-                                  cy={ballScreenY}
-                                  r={BALL_RADIUS * scaleX}
-                                  fill="none"
-                                  stroke="#ff9f1c"
-                                  strokeWidth="2"
-                                />
+                        // Position the cue behind the ball (opposite direction of shot)
+                        const cueEndX = cueBallX - Math.cos(radians) * cueLength;
+                        const cueEndY = cueBallY - Math.sin(radians) * cueLength;
 
-                                {/* Show object ball and pocket if suggestion is active */}
-                                {activeSuggestion && (
-                                  <>
-                                    {/* Path from object ball to pocket */}
-                                    <line
-                                      x1={activeSuggestion.objectBall.x * scaleX}
-                                      y1={activeSuggestion.objectBall.y * scaleY}
-                                      x2={activeSuggestion.pocket.x * scaleX}
-                                      y2={activeSuggestion.pocket.y * scaleY}
-                                      stroke="#6930c3"
-                                      strokeWidth="2"
-                                      strokeDasharray="5,5"
-                                    />
+                        // Calculate the aiming line end point (in front of the ball)
+                        const aimEndX = cueBallX + Math.cos(radians) * aimLength;
+                        const aimEndY = cueBallY + Math.sin(radians) * aimLength;
 
-                                    {/* Target circles */}
-                                    <circle
-                                      cx={activeSuggestion.objectBall.x * scaleX}
-                                      cy={activeSuggestion.objectBall.y * scaleY}
-                                      r="10"
-                                      fill="none"
-                                      stroke="#6930c3"
-                                      strokeWidth="2"
-                                    />
+                        // Calculate thickness based on power
+                        const cueThickness = 6 + (aimParameters.power * 3);
 
-                                    <circle
-                                      cx={activeSuggestion.pocket.x * scaleX}
-                                      cy={activeSuggestion.pocket.y * scaleY}
-                                      r="10"
-                                      fill="none"
-                                      stroke="#ff9f1c"
-                                      strokeWidth="2"
-                                    />
-                                  </>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </svg>
-                      )}
+                        return (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              pointerEvents: 'none',
+                              zIndex: 25, // Above balls
+                              overflow: 'visible', // NEW: Allow the cue to extend beyond the container
+                            }}
+                          >
+                            <svg
+                              width="100%"
+                              height="100%"
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                overflow: 'visible' // NEW: Enable overflow to show cue outside the SVG bounds
+                              }}
+                            >
+                              <defs>
+                                <linearGradient id="cueGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                  <stop offset="0%" style={{ stopColor: '#8B4513' }} />
+                                  <stop offset="30%" style={{ stopColor: '#A0522D' }} />
+                                  <stop offset="90%" style={{ stopColor: '#CD853F' }} />
+                                  <stop offset="100%" style={{ stopColor: '#DEB887' }} />
+                                </linearGradient>
+                                <filter id="cueShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                  <feDropShadow dx="2" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
+                                </filter>
+                              </defs>
+
+                              {/* Aiming line */}
+                              <line
+                                x1={cueBallX}
+                                y1={cueBallY}
+                                x2={aimEndX}
+                                y2={aimEndY}
+                                stroke={isManualAiming ? "#ff9f1c" : "#6930c3"}
+                                strokeWidth="2"
+                                strokeDasharray="5,5"
+                                strokeOpacity="0.8"
+                              />
+
+                              {/* Cue ball highlight */}
+                              <circle
+                                cx={cueBallX}
+                                cy={cueBallY}
+                                r={BALL_RADIUS * scaleX + 2}
+                                fill="none"
+                                stroke="#ff9f1c"
+                                strokeWidth="2"
+                                strokeOpacity="0.8"
+                              />
+
+                              {/* Pool cue */}
+                              <line
+                                x1={cueBallX}
+                                y1={cueBallY}
+                                x2={cueEndX}
+                                y2={cueEndY}
+                                stroke="url(#cueGradient)"
+                                strokeWidth={cueThickness}
+                                strokeLinecap="round"
+                                filter="url(#cueShadow)"
+                              />
+
+                              {/* Cue tip */}
+                              <circle
+                                cx={cueBallX - Math.cos(radians) * (BALL_RADIUS * scaleX + 2)}
+                                cy={cueBallY - Math.sin(radians) * (BALL_RADIUS * scaleY + 2)}
+                                r={cueThickness / 1.5}
+                                fill="#333"
+                                stroke="#555"
+                                strokeWidth="1"
+                              />
+
+                              {/* Show object ball and pocket if suggestion is active */}
+                              {activeSuggestion && (
+                                <>
+                                  {/* Path from object ball to pocket */}
+                                  <line
+                                    x1={activeSuggestion.objectBall.x * scaleX}
+                                    y1={activeSuggestion.objectBall.y * scaleY}
+                                    x2={activeSuggestion.pocket.x * scaleX}
+                                    y2={activeSuggestion.pocket.y * scaleY}
+                                    stroke="#6930c3"
+                                    strokeWidth="2"
+                                    strokeDasharray="5,5"
+                                    strokeOpacity="0.7"
+                                  />
+
+                                  {/* Target circles */}
+                                  <circle
+                                    cx={activeSuggestion.objectBall.x * scaleX}
+                                    cy={activeSuggestion.objectBall.y * scaleY}
+                                    r="10"
+                                    fill="none"
+                                    stroke="#6930c3"
+                                    strokeWidth="2"
+                                  />
+
+                                  <circle
+                                    cx={activeSuggestion.pocket.x * scaleX}
+                                    cy={activeSuggestion.pocket.y * scaleY}
+                                    r="10"
+                                    fill="none"
+                                    stroke="#ff9f1c"
+                                    strokeWidth="2"
+                                  />
+                                </>
+                              )}
+                            </svg>
+                          </div>
+                        );
+                      })()}
 
                       {/* Render ball trajectories */}
                       {showTrajectories && simulationStarted && ballPositions.map((ball, index) => {
@@ -1628,6 +2144,92 @@ export default function EnhancedSimulationPage() {
                           </svg>
                         );
                       })}
+
+                      {/* Interactive Controls */}
+                      {useDirectControls && (
+                        <InteractivePoolControls
+                          ballPositions={ballPositions}
+                          setAimParameters={setAimParameters}
+                          aimParameters={aimParameters}
+                          setShowShotLine={setShowShotLine}
+                          showShotLine={showShotLine}
+                          imageSize={imageSize}
+                          containerRef={containerRef}
+                          onShoot={handleShoot}
+                          isSimulationStarted={simulationStarted}
+                          isSimulationPaused={simulationPaused}
+                          setIsManualAiming={setIsManualAiming}
+                          setActiveSuggestion={setActiveSuggestion}
+                        />
+                      )}
+
+                      {/* Direct Controls Guide */}
+                      {showDirectControlsGuide && !simulationStarted && (
+                        <Box sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          zIndex: 300,
+                          pointerEvents: 'none',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}>
+                          <Paper sx={{
+                            p: 3,
+                            bgcolor: 'rgba(255, 255, 255, 0.9)',
+                            borderRadius: 3,
+                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                            maxWidth: '80%',
+                            position: 'relative',
+                          }}>
+                            <Typography variant="h6" sx={{ mb: 2, color: '#6930c3', fontWeight: 'bold' }}>
+                              New Direct Controls Enabled!
+                            </Typography>
+
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: '#6930c3' }}>1</Avatar>
+                                <Typography variant="body1">
+                                  Click and drag around the white ball to aim
+                                </Typography>
+                              </Box>
+
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: '#e63946' }}>2</Avatar>
+                                <Typography variant="body1">
+                                  Adjust shot power using the vertical meter on the left
+                                </Typography>
+                              </Box>
+
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: '#4caf50' }}>3</Avatar>
+                                <Typography variant="body1">
+                                  Click "Take Shot" to execute your play
+                                </Typography>
+                              </Box>
+                            </Box>
+
+                            <IconButton
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                color: '#6930c3',
+                                pointerEvents: 'auto'
+                              }}
+                              onClick={() => {
+                                setShowDirectControlsGuide(false);
+                                localStorage.setItem('directControlsGuideShown', 'true');
+                              }}
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                          </Paper>
+                        </Box>
+                      )}
 
                       {/* Debug elements - only visible when debug mode is enabled */}
                       {showDebugInfo && (
@@ -1770,16 +2372,33 @@ export default function EnhancedSimulationPage() {
                       />
                     </StyledTabs>
 
-                    {/* Tab 1: AimAssistant */}
+                    {/* Tab 1: AimAssistant - Now only shown if not using direct controls */}
                     <TabPanel value={activeTab} index={0}>
-                      <AimAssistant
-                        ballPositions={ballPositions}
-                        playerLevel={playerLevel}
-                        onAimChange={handleAimChange}
-                        onShoot={handleShoot}
-                        isSimulationStarted={simulationStarted}
-                        activeSuggestion={activeSuggestion}
-                      />
+                      {!useDirectControls ? (
+                        <AimAssistant
+                          ballPositions={ballPositions}
+                          playerLevel={playerLevel}
+                          onAimChange={handleAimChange}
+                          onShoot={handleShoot}
+                          isSimulationStarted={simulationStarted}
+                          activeSuggestion={activeSuggestion}
+                        />
+                      ) : (
+                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                          <Typography variant="subtitle1" sx={{ mb: 2 }}>Direct Controls Enabled</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Click and drag around the white ball to aim. Use the power meter on the left to adjust shot power.
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            sx={{ mt: 2 }}
+                            onClick={() => setUseDirectControls(false)}
+                          >
+                            Switch to Classic Controls
+                          </Button>
+                        </Box>
+                      )}
                     </TabPanel>
 
                     {/* Tab 2: Ball Information */}
@@ -1941,6 +2560,18 @@ export default function EnhancedSimulationPage() {
                           sx={{ mb: 1.5, display: 'block' }}
                         />
 
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={useDirectControls}
+                              onChange={(e) => setUseDirectControls(e.target.checked)}
+                              color="primary"
+                            />
+                          }
+                          label="Use Direct On-Table Controls"
+                          sx={{ mb: 1.5, display: 'block' }}
+                        />
+
                         {/* Save button */}
                         <SaveButton
                           fullWidth
@@ -2049,6 +2680,15 @@ export default function EnhancedSimulationPage() {
           </SaveButton>
         </DialogActions>
       </Dialog>
+
+      {/* Standalone Power Control - always visible backup */}
+      {useDirectControls && !simulationStarted && (
+        <StandalonePowerControl
+          onPowerChange={(newPower) => setAimParameters(prev => ({ ...prev, power: newPower }))}
+          initialPower={aimParameters.power}
+          disabled={simulationStarted && !simulationPaused}
+        />
+      )}
     </Box>
   );
 }

@@ -11,6 +11,7 @@ import Chip from '@mui/material/Chip';
 import AimIcon from '@mui/icons-material/GpsFixed';
 import PowerIcon from '@mui/icons-material/Speed';
 import AdjustIcon from '@mui/icons-material/Adjust';
+import StraightIcon from '@mui/icons-material/Straighten';
 
 // Styled components
 const AimContainer = styled(Box)(({ theme }) => ({
@@ -83,6 +84,44 @@ const LevelChip = styled(Chip)(({ theme, level }) => ({
   height: 24
 }));
 
+// New component for the power cue indicator
+const PowerCueContainer = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  top: '50%',
+  left: '-60px',
+  transform: 'translateY(-50%)',
+  width: '40px',
+  height: '300px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 10,
+}));
+
+const PowerCue = styled(Box)(({ theme, power }) => ({
+  width: '20px',
+  height: '250px',
+  backgroundColor: '#444',
+  borderRadius: '10px',
+  position: 'relative',
+  overflow: 'hidden',
+  border: '2px solid #222',
+  boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+}));
+
+const PowerIndicator = styled(Box)(({ theme, power, isPowerful }) => ({
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  width: '100%',
+  height: `${power}%`,
+  background: isPowerful ? 
+    'linear-gradient(to top, #e63946, #ff9f1c)' : 
+    'linear-gradient(to top, #4cc9f0, #4361ee)',
+  transition: 'height 0.2s ease-out',
+}));
+
 export default function AimAssistant({ 
   ballPositions, 
   playerLevel,
@@ -95,6 +134,7 @@ export default function AimAssistant({
   const [power, setPower] = useState(50);
   const [isAiming, setIsAiming] = useState(false);
   const [canShoot, setCanShoot] = useState(false);
+  const [showPowerCue, setShowPowerCue] = useState(false);
   
   // Update aim when active suggestion changes
   useEffect(() => {
@@ -118,6 +158,11 @@ export default function AimAssistant({
     
     setCanShoot(!!whiteBall && objectBalls.length > 0);
   }, [ballPositions, isSimulationStarted]);
+
+  // Control power cue visibility
+  useEffect(() => {
+    setShowPowerCue(isAiming);
+  }, [isAiming]);
   
   // Handle angle change
   const handleAngleChange = (event, newValue) => {
@@ -190,95 +235,121 @@ export default function AimAssistant({
     }
   };
   
+  // Is power in the "powerful" range (for visual indication)
+  const isPowerfulShot = power > 70;
+  
   if (isSimulationStarted) {
     return null;
   }
+
+  // Render the power cue outside the main container
+  const renderPowerCue = () => {
+    if (!showPowerCue) return null;
+    
+    return (
+      <PowerCueContainer>
+        <Typography variant="caption" sx={{ color: '#555', mb: 1, fontWeight: 'bold' }}>
+          POWER
+        </Typography>
+        <PowerCue>
+          <PowerIndicator power={power} isPowerful={isPowerfulShot} />
+        </PowerCue>
+        <Typography variant="caption" sx={{ color: '#e63946', mt: 1, fontWeight: 'bold' }}>
+          {power}%
+        </Typography>
+      </PowerCueContainer>
+    );
+  };
   
   return (
-    <AimContainer>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-          <AimIcon sx={{ mr: 1, color: '#6930c3' }} />
-          Shot Controls
-        </Typography>
-        <LevelChip 
-          label={`${playerLevel.charAt(0).toUpperCase() + playerLevel.slice(1)} Level`} 
-          level={playerLevel} 
-          size="small"
-        />
-      </Box>
+    <Box sx={{ position: 'relative' }}>
+      {renderPowerCue()}
       
-      {isAiming ? (
-        <>
-          <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <AdjustIcon sx={{ color: '#6930c3', mr: 1 }} />
-              <Typography variant="body2" sx={{ mr: 1 }}>Angle: {Math.round(angle)}°</Typography>
-              <Tooltip title="Change the angle of your shot">
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  (0-360°)
-                </Typography>
-              </Tooltip>
-            </Box>
-            <AngleSlider
-              value={angle}
-              onChange={handleAngleChange}
-              aria-label="Shot angle"
-              min={0}
-              max={360}
-              sx={{ mt: 1 }}
-            />
-          </Box>
-          
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <PowerIcon sx={{ color: '#e63946', mr: 1 }} />
-              <Typography variant="body2" sx={{ mr: 1 }}>Power: {power}%</Typography>
-              <LevelChip 
-                label={getDifficultyLevel().charAt(0).toUpperCase() + getDifficultyLevel().slice(1)} 
-                level={getDifficultyLevel()} 
-                size="small"
-                sx={{ ml: 'auto' }}
+      <AimContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+            <AimIcon sx={{ mr: 1, color: '#6930c3' }} />
+            Shot Controls
+          </Typography>
+          <LevelChip 
+            label={`${playerLevel.charAt(0).toUpperCase() + playerLevel.slice(1)} Level`} 
+            level={playerLevel} 
+            size="small"
+          />
+        </Box>
+        
+        {isAiming ? (
+          <>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <AdjustIcon sx={{ color: '#6930c3', mr: 1 }} />
+                <Typography variant="body2" sx={{ mr: 1 }}>Angle: {Math.round(angle)}°</Typography>
+                <Tooltip title="Change the angle of your shot">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    (0-360°)
+                  </Typography>
+                </Tooltip>
+              </Box>
+              <AngleSlider
+                value={angle}
+                onChange={handleAngleChange}
+                aria-label="Shot angle"
+                min={0}
+                max={360}
+                sx={{ mt: 1 }}
               />
             </Box>
-            <PowerSlider
-              value={power}
-              onChange={handlePowerChange}
-              aria-label="Shot power"
-              min={10}
-              max={100}
-              sx={{ mt: 1 }}
-            />
-          </Box>
-          
-          <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary' }}>
-            {getHelperText()}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Button 
-              variant="outlined" 
+            
+            <Box sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <PowerIcon sx={{ color: '#e63946', mr: 1 }} />
+                <Typography variant="body2" sx={{ mr: 1 }}>Power: {power}%</Typography>
+                <LevelChip 
+                  label={getDifficultyLevel().charAt(0).toUpperCase() + getDifficultyLevel().slice(1)} 
+                  level={getDifficultyLevel()} 
+                  size="small"
+                  sx={{ ml: 'auto' }}
+                />
+              </Box>
+              <PowerSlider
+                value={power}
+                onChange={handlePowerChange}
+                aria-label="Shot power"
+                min={10}
+                max={100}
+                sx={{ mt: 1 }}
+              />
+            </Box>
+            
+            <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary' }}>
+              {getHelperText()}
+            </Typography>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Button 
+                variant="outlined" 
+                onClick={toggleAiming}
+                sx={{ borderRadius: 20, borderColor: '#6930c3', color: '#6930c3' }}
+              >
+                Cancel
+              </Button>
+              <AimButton onClick={handleShoot}>
+                Take Shot
+              </AimButton>
+            </Box>
+          </>
+        ) : (
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <AimButton
               onClick={toggleAiming}
-              sx={{ borderRadius: 20, borderColor: '#6930c3', color: '#6930c3' }}
+              disabled={!canShoot}
+              startIcon={<AimIcon />}
             >
-              Cancel
-            </Button>
-            <AimButton onClick={handleShoot}>
-              Take Shot
+              Aim Shot
             </AimButton>
           </Box>
-        </>
-      ) : (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <AimButton
-            onClick={toggleAiming}
-            disabled={!canShoot}
-            startIcon={<AimIcon />}
-          >
-            Aim Shot
-          </AimButton>
-        </Box>
-      )}
-    </AimContainer>
+        )}
+      </AimContainer>
+    </Box>
   );
 }
