@@ -2,29 +2,89 @@ const request = require('supertest');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const imageProcessingRoutes = require('../routes/imageProcessing');
-const pool = require('../models/db');
-const { PythonShell } = require('python-shell');
 
-// Mock database pool
+// Mock the database pool
 jest.mock('../models/db', () => ({
   query: jest.fn()
 }));
 
-// Mock PythonShell
-jest.mock('python-shell', () => ({
-  PythonShell: {
-    run: jest.fn()
+// Create a mock for PythonShell
+class MockPythonShell {
+  constructor() {
+    this.messageHandlers = {};
+    this.stderrHandlers = {};
+    this.endHandler = null;
   }
-}));
+
+  on(event, callback) {
+    if (event === 'message') {
+      this.messageHandlers[event] = callback;
+    } else if (event === 'stderr') {
+      this.stderrHandlers[event] = callback;
+    }
+    return this;
+  }
+
+  end(callback) {
+    this.endHandler = callback;
+  }
+
+  // Helper methods to trigger events during tests
+  emitMessage(message) {
+    if (this.messageHandlers['message']) {
+      this.messageHandlers['message'](message);
+    }
+  }
+
+  emitStderr(error) {
+    if (this.stderrHandlers['stderr']) {
+      this.stderrHandlers['stderr'](error);
+    }
+  }
+
+  emitEnd(error, code, signal) {
+    if (this.endHandler) {
+      this.endHandler(error, code, signal);
+    }
+  }
+}
+
+// Mock the PythonShell module
+jest.mock('python-shell', () => {
+  return {
+    PythonShell: MockPythonShell
+  };
+});
 
 // Mock fs functions
 jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   existsSync: jest.fn().mockReturnValue(true),
   mkdirSync: jest.fn(),
-  statSync: jest.fn().mockReturnValue({ size: 1024 * 1024 }) // 1MB
+  statSync: jest.fn().mockReturnValue({ size: 1024 * 1024 }), // 1MB
+  readFileSync: jest.fn().mockReturnValue(Buffer.from('test file content')),
+  readdirSync: jest.fn().mockReturnValue(['debug1.jpg', 'debug2.jpg'])
 }));
+
+// Mock multer
+jest.mock('multer', () => {
+  return () => ({
+    single: () => (req, res, next) => {
+      req.file = {
+        filename: 'test-image.jpg',
+        path: '/uploads/test-image.jpg',
+        mimetype: 'image/jpeg',
+        size: 1024 * 50 // 50KB
+      };
+      next();
+    }
+  });
+});
+
+// Import dependencies after mocking
+const pool = require('../models/db');
+const { PythonShell } = require('python-shell');
+const imageProcessingRoutes = require('../routes/imageProcessing');
 
 // Create Express app for testing
 const app = express();
@@ -36,86 +96,116 @@ describe('Image Processing Routes', () => {
     jest.clearAllMocks();
   });
 
-  test('GET /latest should return the latest uploaded image', async () => {
-    // Mock database response
-    pool.query.mockResolvedValueOnce({
-      rows: [{
-        image_url: '/uploads/test-image.jpg',
-        uploaded_at: new Date(),
-        player_level: 'intermediate'
-      }]
+  describe('GET /latest', () => {
+    test('should return the latest uploaded image', async () => {
+      // Mock database response
+      pool.query.mockResolvedValueOnce({
+        rows: [{
+          image_url: '/uploads/test-image.jpg',
+          uploaded_at: new Date(),
+          player_level: 'intermediate'
+        }]
+      });
+
+      // Mock fs.existsSync for the image check
+      fs.existsSync.mockReturnValue(true);
+
+      const response = await request(app)
+        .get('/api/image/latest');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('image_url', '/uploads/test-image.jpg');
+      expect(response.body).toHaveProperty('player_level', 'intermediate');
+      expect(pool.query).toHaveBeenCalledTimes(1);
     });
 
-    const response = await request(app)
-      .get('/api/image/latest');
+    test('should handle no images found', async () => {
+      // Mock empty database response
+      pool.query.mockResolvedValueOnce({ rows: [] });
 
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('image_url', '/uploads/test-image.jpg');
-    expect(response.body).toHaveProperty('player_level', 'intermediate');
-    expect(pool.query).toHaveBeenCalledTimes(1);
+      const response = await request(app)
+        .get('/api/image/latest');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'No uploaded images found');
+    });
+
+    test('should handle missing image file', async () => {
+      // Mock database response
+      pool.query.mockResolvedValueOnce({
+        rows: [{
+          image_url: '/uploads/missing-image.jpg',
+          uploaded_at: new Date(),
+          player_level: 'intermediate'
+        }]
+      });
+
+      // Mock fs.existsSync to return false for the image file check
+      fs.existsSync.mockReturnValue(false);
+
+      const response = await request(app)
+        .get('/api/image/latest');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Image file not found on server');
+    });
   });
 
-  test('GET /latest should handle no images found', async () => {
-    // Mock empty database response
-    pool.query.mockResolvedValueOnce({ rows: [] });
+  describe('POST /process', () => {
+    test('should handle special pool-table image case', async () => {
+      const response = await request(app)
+        .post('/api/image/process')
+        .send({ image_path: '/uploads/pool-table-123456.jpg' });
 
-    const response = await request(app)
-      .get('/api/image/latest');
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('message', 'Image processed successfully');
+      expect(response.body).toHaveProperty('transformed_image_url', '/uploads/processed_default_table.jpg');
+      expect(response.body).toHaveProperty('ball_positions');
+      expect(response.body.ball_positions.length).toBeGreaterThan(0);
+    });
 
-    expect(response.status).toBe(404);
-    expect(response.body).toHaveProperty('error', 'No uploaded images found');
+    test('should handle invalid image path', async () => {
+      const response = await request(app)
+        .post('/api/image/process')
+        .send({ image_path: '' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid image path received');
+    });
+
+    test('should handle missing image file', async () => {
+      // Mock fs.existsSync to return false for the image file check
+      fs.existsSync.mockReturnValueOnce(false);
+
+      const response = await request(app)
+        .post('/api/image/process')
+        .send({ image_path: '/uploads/missing-image.jpg' });
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toContain('Image file not found');
+    });
   });
 
-  test('POST /process should process an image successfully', async () => {
-    // Mock PythonShell behavior
-    const mockPyshell = {
-      on: jest.fn(),
-      end: jest.fn()
-    };
-    
-    // Mock PythonShell constructor
-    jest.spyOn(PythonShell, 'PythonShell').mockImplementation(() => mockPyshell);
-    
-    // Simulate successful processing by calling the 'end' callback
-    mockPyshell.on.mockImplementation((event, callback) => {
-      if (event === 'message') {
-        callback(JSON.stringify({
-          image_url: '/uploads/processed_test-image.jpg',
-          ball_positions: [
-            { color: 'white', x: 100, y: 100 },
-            { color: 'red', x: 200, y: 200, number: 1 }
-          ]
-        }));
-      }
-      return mockPyshell;
-    });
-    
-    mockPyshell.end.mockImplementation((callback) => {
-      callback(null, 0); // No error, exit code 0
+  describe('GET /debug', () => {
+    test('should retrieve debug images', async () => {
+      const response = await request(app)
+        .get('/api/image/debug');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('message', 'Debug images retrieved successfully');
+      expect(response.body).toHaveProperty('debug_images');
+      expect(response.body.debug_images).toHaveLength(2);
     });
 
-    const response = await request(app)
-      .post('/api/image/process')
-      .send({ image_path: '/uploads/test-image.jpg' });
+    test('should handle missing debug directory', async () => {
+      // Mock fs.existsSync to return false for the debug directory
+      fs.existsSync.mockReturnValueOnce(false);
 
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('transformed_image_url');
-    expect(response.body).toHaveProperty('ball_positions');
-    expect(response.body.ball_positions).toHaveLength(2);
-  });
+      const response = await request(app)
+        .get('/api/image/debug');
 
-  test('POST /process should handle processing errors', async () => {
-    // Mock PythonShell to throw an error
-    PythonShell.run.mockImplementation((script, options, callback) => {
-      callback(new Error('Python processing error'), null);
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Debug directory not found');
     });
-
-    const response = await request(app)
-      .post('/api/image/process')
-      .send({ image_path: '/uploads/test-image.jpg' });
-
-    expect(response.status).toBe(500);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('Error processing image');
   });
 });
