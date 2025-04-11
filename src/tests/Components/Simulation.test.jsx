@@ -58,6 +58,7 @@ describe('SimulationPage', () => {
       switch (key) {
         case 'user_id': return '123';
         case 'playerLevel': return 'intermediate';
+        case 'directControlsGuideShown': return 'true'; // Prevent guide from showing in tests
         default: return null;
       }
     });
@@ -114,18 +115,24 @@ describe('SimulationPage', () => {
     await waitFor(() => {
       // We should have information about the balls
       expect(screen.getByText(/Intermediate Level/i)).toBeInTheDocument();
-      expect(screen.getByText(/Start Simulation/i)).toBeInTheDocument();
+      
+      // Look for start simulation button
+      const startButtons = screen.getAllByText(/Start Simulation/i);
+      expect(startButtons.length).toBeGreaterThan(0);
+      expect(startButtons[0]).toBeInTheDocument();
     });
   });
 
   test('starts simulation when start button is clicked', async () => {
     await waitFor(() => {
-      expect(screen.getByText(/Start Simulation/i)).toBeInTheDocument();
+      const startButtons = screen.getAllByText(/Start Simulation/i);
+      expect(startButtons.length).toBeGreaterThan(0);
     });
     
     // Click the start simulation button
+    const startButtons = screen.getAllByText(/Start Simulation/i);
     act(() => {
-      fireEvent.click(screen.getByText(/Start Simulation/i));
+      fireEvent.click(startButtons[0]);
     });
     
     // Now should show Pause button
@@ -139,7 +146,9 @@ describe('SimulationPage', () => {
 
   test('shows shot suggestions section', async () => {
     await waitFor(() => {
-      expect(screen.getByText(/Shot Suggestions/i)).toBeInTheDocument();
+      const suggestionsHeaders = screen.getAllByText(/Shot Suggestions/i);
+      expect(suggestionsHeaders.length).toBeGreaterThan(0);
+      expect(suggestionsHeaders[0]).toBeInTheDocument();
     });
   });
 

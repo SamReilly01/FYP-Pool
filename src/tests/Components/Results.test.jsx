@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import ResultsPage from '../../Components/ResultsPage/Results';
 
@@ -67,11 +67,14 @@ describe('ResultsPage', () => {
       })
     });
     
-    render(
-      <BrowserRouter>
-        <ResultsPage />
-      </BrowserRouter>
-    );
+    // Use act for initial render
+    act(() => {
+      render(
+        <BrowserRouter>
+          <ResultsPage />
+        </BrowserRouter>
+      );
+    });
   });
 
   test('renders page title', async () => {
@@ -97,10 +100,14 @@ describe('ResultsPage', () => {
     
     // Click the details button for first simulation
     const detailsButtons = screen.getAllByText(/Details/i);
-    fireEvent.click(detailsButtons[0]);
+    act(() => {
+      fireEvent.click(detailsButtons[0]);
+    });
     
     // Check that the dialog opened
-    expect(screen.getByText(/Simulation Details/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Simulation Details/i)).toBeInTheDocument();
+    });
   });
 
   test('calls navigate when replay button is clicked', async () => {
@@ -111,7 +118,9 @@ describe('ResultsPage', () => {
     
     // Click the replay button for first simulation
     const replayButtons = screen.getAllByText(/Replay Simulation/i);
-    fireEvent.click(replayButtons[0]);
+    act(() => {
+      fireEvent.click(replayButtons[0]);
+    });
     
     // Check navigation to simulation page
     expect(mockNavigate).toHaveBeenCalledWith('/simulation');
@@ -128,7 +137,9 @@ describe('ResultsPage', () => {
     
     // Click the delete button for first simulation
     const deleteButtons = screen.getAllByText(/Delete/i);
-    fireEvent.click(deleteButtons[0]);
+    act(() => {
+      fireEvent.click(deleteButtons[0]);
+    });
     
     // Check that confirmation dialog is shown
     expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();

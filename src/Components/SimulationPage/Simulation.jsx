@@ -106,6 +106,7 @@ const InteractivePoolControls = ({
     return angle;
   };
 
+
   // Handle mouse/touch down on cue ball
   const handleCueBallDown = (e) => {
     if (isSimulationStarted && !isSimulationPaused) return;
@@ -287,7 +288,7 @@ const InteractivePoolControls = ({
         ref={powerMeterRef}
         style={{
           position: 'absolute',
-          left: '-50px', 
+          left: '-50px',
           top: '50%',
           transform: 'translateY(-50%)',
           width: '30px',
@@ -596,13 +597,14 @@ const TABLE_WIDTH = 800;
 const TABLE_HEIGHT = 400;
 const BALL_RADIUS = 14;
 const POCKET_RADIUS = 25;
+const RAIL_THICKNESS = 30;
 const POCKET_POSITIONS = [
-  { x: 25, y: 25 },               // Top left
-  { x: TABLE_WIDTH / 2, y: 20 },  // Top middle
-  { x: TABLE_WIDTH - 25, y: 25 }, // Top right
-  { x: 25, y: TABLE_HEIGHT - 25 },               // Bottom left
-  { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 20 },  // Bottom middle
-  { x: TABLE_WIDTH - 25, y: TABLE_HEIGHT - 25 }, // Bottom right
+  { x: RAIL_THICKNESS, y: RAIL_THICKNESS },                     // Top left
+  { x: TABLE_WIDTH / 2, y: RAIL_THICKNESS / 2 },                  // Top middle
+  { x: TABLE_WIDTH - RAIL_THICKNESS, y: RAIL_THICKNESS },       // Top right
+  { x: RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS },              // Bottom left
+  { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - RAIL_THICKNESS / 2 },           // Bottom middle
+  { x: TABLE_WIDTH - RAIL_THICKNESS, y: TABLE_HEIGHT - RAIL_THICKNESS }, // Bottom right
 ];
 
 // Collisions between balls
@@ -664,12 +666,15 @@ function resolveCollision(ball1, ball2) {
 
 // Check if ball is in pocket
 function isInPocket(ball) {
+  let nearPocket = false;
   for (const pocket of POCKET_POSITIONS) {
     const dx = ball.x - pocket.x;
     const dy = ball.y - pocket.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    if (distance < POCKET_RADIUS) {
+    // Increase the effective pocket size to make it easier to pocket balls
+    // A ball is considered pocketed when it significantly overlaps with the pocket
+    if (distance < POCKET_RADIUS + BALL_RADIUS / 2) {
       return true;
     }
   }
@@ -1467,26 +1472,45 @@ export default function EnhancedSimulationPage() {
           if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
           if (Math.abs(ball.vy) < 0.01) ball.vy = 0;
 
-          // Check for wall collisions
-          // Left wall
-          if (ball.x < BALL_RADIUS) {
-            ball.x = BALL_RADIUS;
-            ball.vx = -ball.vx * RESTITUTION;
+          // Before checking wall collisions, see if the ball is near a pocket
+          let nearPocket = false;
+
+          // Check if ball is near any pocket
+          for (const pocket of POCKET_POSITIONS) {
+            const dx = ball.x - pocket.x;
+            const dy = ball.y - pocket.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // If ball is close to a pocket, don't apply wall collision
+            // This allows the ball to pass through the wall at pocket locations
+            if (distance < POCKET_RADIUS * 1.5) {
+              nearPocket = true;
+              break;
+            }
           }
-          // Right wall
-          if (ball.x > TABLE_WIDTH - BALL_RADIUS) {
-            ball.x = TABLE_WIDTH - BALL_RADIUS;
-            ball.vx = -ball.vx * RESTITUTION;
-          }
-          // Top wall
-          if (ball.y < BALL_RADIUS) {
-            ball.y = BALL_RADIUS;
-            ball.vy = -ball.vy * RESTITUTION;
-          }
-          // Bottom wall
-          if (ball.y > TABLE_HEIGHT - BALL_RADIUS) {
-            ball.y = TABLE_HEIGHT - BALL_RADIUS;
-            ball.vy = -ball.vy * RESTITUTION;
+
+          // Only apply wall collisions if the ball is NOT near a pocket
+          if (!nearPocket) {
+            // Left wall (with rail thickness)
+            if (ball.x < BALL_RADIUS + RAIL_THICKNESS) {
+              ball.x = BALL_RADIUS + RAIL_THICKNESS;
+              ball.vx = -ball.vx * RESTITUTION;
+            }
+            // Right wall (with rail thickness)
+            if (ball.x > TABLE_WIDTH - BALL_RADIUS - RAIL_THICKNESS) {
+              ball.x = TABLE_WIDTH - BALL_RADIUS - RAIL_THICKNESS;
+              ball.vx = -ball.vx * RESTITUTION;
+            }
+            // Top wall (with rail thickness)
+            if (ball.y < BALL_RADIUS + RAIL_THICKNESS) {
+              ball.y = BALL_RADIUS + RAIL_THICKNESS;
+              ball.vy = -ball.vy * RESTITUTION;
+            }
+            // Bottom wall (with rail thickness)
+            if (ball.y > TABLE_HEIGHT - BALL_RADIUS - RAIL_THICKNESS) {
+              ball.y = TABLE_HEIGHT - BALL_RADIUS - RAIL_THICKNESS;
+              ball.vy = -ball.vy * RESTITUTION;
+            }
           }
 
           // Check if ball is in a pocket
