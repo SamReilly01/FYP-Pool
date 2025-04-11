@@ -52,7 +52,7 @@ class MockPythonShell {
 // Mock the PythonShell module
 jest.mock('python-shell', () => {
   return {
-    PythonShell: MockPythonShell
+    PythonShell: jest.fn().mockImplementation(() => new MockPythonShell())
   };
 });
 
@@ -66,10 +66,14 @@ jest.mock('fs', () => ({
   readdirSync: jest.fn().mockReturnValue(['debug1.jpg', 'debug2.jpg'])
 }));
 
-// Mock multer
+// Mock multer with the proper structure
 jest.mock('multer', () => {
-  return () => ({
-    single: () => (req, res, next) => {
+  return jest.fn().mockImplementation(() => ({
+    diskStorage: jest.fn().mockReturnValue({
+      destination: jest.fn(),
+      filename: jest.fn()
+    }),
+    single: jest.fn().mockReturnValue((req, res, next) => {
       req.file = {
         filename: 'test-image.jpg',
         path: '/uploads/test-image.jpg',
@@ -77,8 +81,8 @@ jest.mock('multer', () => {
         size: 1024 * 50 // 50KB
       };
       next();
-    }
-  });
+    })
+  }));
 });
 
 // Import dependencies after mocking
@@ -207,5 +211,11 @@ describe('Image Processing Routes', () => {
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty('error', 'Debug directory not found');
     });
+  });
+
+  // Add cleanup for open handles
+  afterAll(done => {
+    app.mockClose && app.mockClose();
+    done();
   });
 });

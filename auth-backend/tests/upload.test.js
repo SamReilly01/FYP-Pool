@@ -4,25 +4,24 @@ const fs = require('fs');
 const path = require('path');
 
 // Create a proper mock for multer
-const multerMock = {
-  diskStorage: jest.fn(() => ({
-    destination: jest.fn(),
-    filename: jest.fn()
-  })),
-  single: jest.fn(() => (req, res, next) => {
-    req.file = {
-      filename: 'test-file-123456.jpg',
-      originalname: 'test-image.jpg',
-      path: '/uploads/test-file-123456.jpg',
-      mimetype: 'image/jpeg',
-      size: 1024 * 50 // 50KB
-    };
-    next();
-  })
-};
-
-// Mock multer module
-jest.mock('multer', () => jest.fn(() => multerMock));
+jest.mock('multer', () => {
+  return jest.fn().mockImplementation(() => ({
+    diskStorage: jest.fn().mockReturnValue({
+      destination: jest.fn(),
+      filename: jest.fn()
+    }),
+    single: jest.fn().mockReturnValue((req, res, next) => {
+      req.file = {
+        filename: 'test-file-123456.jpg',
+        originalname: 'test-image.jpg',
+        path: '/uploads/test-file-123456.jpg',
+        mimetype: 'image/jpeg',
+        size: 1024 * 50 // 50KB
+      };
+      next();
+    })
+  }));
+});
 
 // Mock the database connection
 jest.mock('../models/db', () => ({
@@ -51,24 +50,10 @@ app.use('/api', uploadRoutes);
 describe('Upload Routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset multer's implementation for each test
-    multer.mockImplementation(() => multerMock);
   });
 
   describe('POST /upload', () => {
     test('should upload a file and save to database with valid user_id', async () => {
-      // Mock the file upload middleware
-      multerMock.single.mockImplementation(() => (req, res, next) => {
-        req.file = {
-          filename: 'test-file-123456.jpg',
-          originalname: 'test-image.jpg',
-          path: '/uploads/test-file-123456.jpg',
-          mimetype: 'image/jpeg',
-          size: 1024 * 50 // 50KB
-        };
-        next();
-      });
-
       // Mock database response
       pool.query.mockResolvedValueOnce({
         rows: [{
@@ -95,18 +80,6 @@ describe('Upload Routes', () => {
     });
 
     test('should handle invalid user_id format', async () => {
-      // Mock the file upload middleware
-      multerMock.single.mockImplementation(() => (req, res, next) => {
-        req.file = {
-          filename: 'test-file-123456.jpg',
-          originalname: 'test-image.jpg',
-          path: '/uploads/test-file-123456.jpg',
-          mimetype: 'image/jpeg',
-          size: 1024 * 50 // 50KB
-        };
-        next();
-      });
-
       // Make request with invalid user_id
       const response = await request(app)
         .post('/api/upload')
@@ -120,18 +93,6 @@ describe('Upload Routes', () => {
     });
 
     test('should handle database errors', async () => {
-      // Mock the file upload middleware
-      multerMock.single.mockImplementation(() => (req, res, next) => {
-        req.file = {
-          filename: 'test-file-123456.jpg',
-          originalname: 'test-image.jpg',
-          path: '/uploads/test-file-123456.jpg',
-          mimetype: 'image/jpeg',
-          size: 1024 * 50 // 50KB
-        };
-        next();
-      });
-
       // Mock database error
       pool.query.mockRejectedValueOnce(new Error('Database connection error'));
 

@@ -296,3 +296,14 @@ describe('Authentication Routes', () => {
     });
   });
 });
+
+afterAll(done => {
+  if (app.close) {
+    app.close();
+  }
+  // Force Node to exit after tests if needed
+  setTimeout(() => {
+    process.exit(0);
+  }, 500);
+  done();
+});
