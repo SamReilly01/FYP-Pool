@@ -1,3 +1,5 @@
+//test file
+
 const { PythonShell } = require('python-shell');
 
 const image_path = 'uploads/1740537190465_Pool-Table-test1.jpg';
@@ -5,7 +7,7 @@ console.log('📥 Testing PythonShell with image:', image_path);
 
 const options = {
   args: [image_path],
-  pythonOptions: ['-u'], // ✅ Forces unbuffered output from Python
+  pythonOptions: ['-u'], 
 };
 
 const pyshell = new PythonShell('process_image.py', options);

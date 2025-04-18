@@ -174,7 +174,7 @@ export default function AboutPage() {
     {
       title: "AI Shot Suggestions",
       icon: <SchoolIcon sx={{ fontSize: 40, color: "#6930c3" }} />,
-      description: "Smart suggestions for optimal shots based on your skill level, with personalized feedback to help improve your game over time."
+      description: "Smart suggestions for optimal shots based on your skill level, with personalised feedback to help improve your game over time."
     },
     {
       title: "Interactive Learning",
@@ -216,8 +216,8 @@ export default function AboutPage() {
             Project Mission
           </Typography>
           <Typography variant="body1" paragraph align="center" sx={{ maxWidth: 900, mx: 'auto', mb: 3 }}>
-            Pool Game Simulation was created to help both casual players and professionals improve their game through technology. 
-            By combining computer vision, physics simulation, and artificial intelligence, this tool analyzes your 
+            My Pool Game Simulation was created to help both casual players and professionals improve their game through technology. 
+            By combining computer vision, physics simulation, and artificial intelligence, this tool analyses your 
             pool table setups and provides valuable insights into optimal shot selection and game strategy.
           </Typography>
           <Typography variant="body1" paragraph align="center" sx={{ maxWidth: 900, mx: 'auto' }}>
@@ -272,7 +272,7 @@ export default function AboutPage() {
                   </li>
                   <li>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      Ball detection and classification through color segmentation and Hough circle transforms
+                      Ball detection and classification through colour segmentation and Hough circle transforms
                     </Typography>
                   </li>
                   <li>
@@ -383,15 +383,15 @@ export default function AboutPage() {
                     Solo Developer Project
                   </Typography>
                   <Typography variant="body1" paragraph>
-                    Pool Game Simulation is a personal project developed by a passionate programmer with interests in computer vision, 
-                    physics simulation, and game development. This project combines these interests with a love for pool to create 
-                    a practical tool that helps players visualize and improve their game.
+                    My Pool Game Simulation is a personal project that combines computer vision, 
+                    physics simulation, and game development with a love for pool to create 
+                    a practical tool that helps players visualise and improve their game.
                   </Typography>
                   
                   <Divider sx={{ my: 2 }} />
                   
                   <Typography variant="body2" color="textSecondary" paragraph>
-                    Skills utilized in this project include JavaScript/React for frontend development, Node.js for backend services, 
+                    Skills utilised in this project include JavaScript/React for frontend development, Node.js for backend services, 
                     Python for computer vision algorithms, and physics modeling for realistic simulation.
                   </Typography>
                   
@@ -421,7 +421,7 @@ export default function AboutPage() {
             Ready to Improve Your Game?
           </Typography>
           <Typography variant="body1" paragraph sx={{ maxWidth: 700, mx: 'auto', mb: 4 }}>
-            Start using the pool game simulation tool today to analyze your shots, improve your strategy, 
+            Start using the pool game simulation tool to analyse your shots, improve your strategy, 
             and take your pool playing skills to the next level.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>

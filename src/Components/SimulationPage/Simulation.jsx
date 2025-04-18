@@ -31,6 +31,10 @@ import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import Collapse from '@mui/material/Collapse';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
 
 // Icons
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -51,10 +55,13 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import EmojiObjectsIcon from '@mui/icons-material/EmojiObjects';
 import SportsBilliards from '@mui/icons-material/SportsEsports';
 import CloseIcon from '@mui/icons-material/Close';
+import ErrorIcon from '@mui/icons-material/Error';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 // Import components
 import ShotSuggestion from './ShotSuggestion';
 import AimAssistant from './AimAssistant';
+import PoolRulesService from '../../services/poolRulesService';
 
 // Interactive Pool Controls Component
 const InteractivePoolControls = ({
@@ -69,7 +76,8 @@ const InteractivePoolControls = ({
   isSimulationStarted,
   isSimulationPaused,
   setIsManualAiming,
-  setActiveSuggestion
+  setActiveSuggestion,
+  gameState
 }) => {
   const [isDraggingCue, setIsDraggingCue] = useState(false);
   const [isDraggingPower, setIsDraggingPower] = useState(false);
@@ -106,10 +114,10 @@ const InteractivePoolControls = ({
     return angle;
   };
 
-
   // Handle mouse/touch down on cue ball
   const handleCueBallDown = (e) => {
     if (isSimulationStarted && !isSimulationPaused) return;
+    if (gameState.isGameOver) return; // Don't allow aiming if game is over
 
     e.preventDefault();
     const rect = containerRef.current.getBoundingClientRect();
@@ -194,6 +202,7 @@ const InteractivePoolControls = ({
   // Handle mouse/touch down on power meter
   const handlePowerDown = (e) => {
     if (isSimulationStarted && !isSimulationPaused) return;
+    if (gameState.isGameOver) return; // Don't allow power changes if game is over
 
     e.preventDefault();
     e.stopPropagation();
@@ -250,146 +259,153 @@ const InteractivePoolControls = ({
 
   // Handle take shot
   const handleTakeShot = () => {
-    if (onShoot) {
+    if (onShoot && !gameState.isGameOver) {
       onShoot(aimParameters);
     }
   };
 
   // If simulation is running, don't render interactive controls
   if (isSimulationStarted && !isSimulationPaused) return null;
-  if (!cueBall) return null;
+  if (!cueBall || gameState.isGameOver) return null;
+
+  // Only allow controls if it's the current player's turn
+  const isPlayerTurn = true; // 
 
   // Get cue ball position in screen coordinates
   const ballScreenPos = getScreenCoords(cueBall.x, cueBall.y);
 
   return (
     <>
-      {/* Interactive area for cue ball */}
-      <div
-        style={{
-          position: 'absolute',
-          top: ballScreenPos.y - 40,
-          left: ballScreenPos.x - 40,
-          width: 80,
-          height: 80,
-          borderRadius: '50%',
-          cursor: 'grab',
-          zIndex: 200,
-          opacity: 0.2,  // Make slightly visible for better UX
-          backgroundColor: '#fff',
-          border: '2px solid rgba(105, 48, 195, 0.5)',
-        }}
-        onMouseDown={handleCueBallDown}
-        onTouchStart={handleCueBallDown}
-      />
+      {isPlayerTurn && (
+        <>
+          {/* Interactive area for cue ball */}
+          <div
+            style={{
+              position: 'absolute',
+              top: ballScreenPos.y - 40,
+              left: ballScreenPos.x - 40,
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              cursor: 'grab',
+              zIndex: 200,
+              opacity: 0.2,  // Make slightly visible for better UX
+              backgroundColor: '#fff',
+              border: '2px solid rgba(105, 48, 195, 0.5)',
+            }}
+            onMouseDown={handleCueBallDown}
+            onTouchStart={handleCueBallDown}
+          />
 
-      {/* Interactive power meter */}
-      <div
-        ref={powerMeterRef}
-        style={{
-          position: 'absolute',
-          left: '-50px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '30px',
-          height: '260px',
-          backgroundColor: '#333',
-          borderRadius: '15px',
-          boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-          border: '2px solid #222',
-          overflow: 'hidden',
-          cursor: isDraggingPower ? 'grabbing' : 'grab',
-          zIndex: 1000, // Increased z-index to ensure visibility
-          display: (!isSimulationStarted || isSimulationPaused) && cueBall ? 'block' : 'none',
-        }}
-        onMouseDown={handlePowerDown}
-        onTouchStart={handlePowerDown}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: '100%',
-            height: `${aimParameters.power * 100}%`,
-            background: aimParameters.power > 0.7 ?
-              'linear-gradient(to top, #e63946, #ff9f1c)' :
-              'linear-gradient(to top, #4cc9f0, #4361ee)',
-            transition: isDraggingPower ? 'none' : 'height 0.2s ease-out',
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '10px',
-            height: '240px',
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1))',
-            borderRadius: '5px',
-            pointerEvents: 'none',
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            top: '-30px',
-            left: '0',
-            width: '100%',
-            textAlign: 'center',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            backgroundColor: '#222',
-            padding: '4px 0',
-            borderRadius: '10px 10px 0 0',
-            pointerEvents: 'none',
-          }}
-        >
-          POWER
-        </div>
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '-25px',
-            left: '0',
-            width: '100%',
-            textAlign: 'center',
-            color: 'white',
-            fontSize: '11px',
-            backgroundColor: '#222',
-            padding: '2px 0',
-            borderRadius: '0 0 10px 10px',
-            pointerEvents: 'none',
-          }}
-        >
-          {Math.round(aimParameters.power * 100)}%
-        </div>
-      </div>
+          {/* Interactive power meter */}
+          <div
+            ref={powerMeterRef}
+            style={{
+              position: 'absolute',
+              left: '-50px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '30px',
+              height: '260px',
+              backgroundColor: '#333',
+              borderRadius: '15px',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+              border: '2px solid #222',
+              overflow: 'hidden',
+              cursor: isDraggingPower ? 'grabbing' : 'grab',
+              zIndex: 1000, // Increased z-index to ensure visibility
+              display: (!isSimulationStarted || isSimulationPaused) && cueBall ? 'block' : 'none',
+            }}
+            onMouseDown={handlePowerDown}
+            onTouchStart={handlePowerDown}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                height: `${aimParameters.power * 100}%`,
+                background: aimParameters.power > 0.7 ?
+                  'linear-gradient(to top, #e63946, #ff9f1c)' :
+                  'linear-gradient(to top, #4cc9f0, #4361ee)',
+                transition: isDraggingPower ? 'none' : 'height 0.2s ease-out',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '10px',
+                height: '240px',
+                background: 'linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1))',
+                borderRadius: '5px',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: '-30px',
+                left: '0',
+                width: '100%',
+                textAlign: 'center',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                backgroundColor: '#222',
+                padding: '4px 0',
+                borderRadius: '10px 10px 0 0',
+                pointerEvents: 'none',
+              }}
+            >
+              POWER
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-25px',
+                left: '0',
+                width: '100%',
+                textAlign: 'center',
+                color: 'white',
+                fontSize: '11px',
+                backgroundColor: '#222',
+                padding: '2px 0',
+                borderRadius: '0 0 10px 10px',
+                pointerEvents: 'none',
+              }}
+            >
+              {Math.round(aimParameters.power * 100)}%
+            </div>
+          </div>
 
-      {/* Shoot button */}
-      <button
-        style={{
-          position: 'absolute',
-          right: '0px',
-          bottom: '0px',
-          backgroundColor: '#6930c3',
-          color: 'white',
-          borderRadius: '25px',
-          padding: '12px 25px',
-          border: 'none',
-          fontWeight: 'bold',
-          fontSize: '16px',
-          boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-          cursor: 'pointer',
-          zIndex: 100,
-          //display: (!isSimulationStarted || isSimulationPaused) && cueBall && showShotLine ? 'block' : 'none',
-        }}
-        onClick={handleTakeShot}
-      >
-        Take Shot
-      </button>
+          {/* Shoot button */}
+          <button
+            style={{
+              position: 'absolute',
+              right: '0px',
+              bottom: '0px',
+              backgroundColor: '#6930c3',
+              color: 'white',
+              borderRadius: '25px',
+              padding: '12px 25px',
+              border: 'none',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+              cursor: 'pointer',
+              zIndex: 100,
+              display: (!isSimulationStarted || isSimulationPaused) && cueBall && showShotLine ? 'block' : 'none',
+            }}
+            onClick={handleTakeShot}
+          >
+            Take Shot
+          </button>
+        </>
+      )}
     </>
   );
 };
@@ -556,7 +572,7 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   },
 }));
 
-// New ball visualization component
+// New ball visualisation component
 const BallVisualization = styled(Box)(({ theme, color }) => ({
   width: 24,
   height: 24,
@@ -589,6 +605,156 @@ const SaveButton = styled(Button)(({ theme }) => ({
     boxShadow: '0 6px 25px rgba(0, 0, 0, 0.15)',
   },
 }));
+
+// Component to display shot history with minimal white space
+const ShotHistoryPanel = ({ gameLog, ballGroups }) => {
+  // Filter and limit the log entries to the most recent 20
+  const recentLogs = gameLog?.slice(-20).reverse() || [];
+
+  // Helper function to get colour for player avatar
+  const getPlayerColor = (player) => {
+    if (!ballGroups || !ballGroups[player]) return '#6930c3'; // Default colour
+    return ballGroups[player] === 'red' ? '#f44336' : '#ffeb3b';
+  };
+
+  // Helper function to get text colour for player avatar
+  const getPlayerTextColor = (player) => {
+    if (!ballGroups || !ballGroups[player]) return 'white'; // Default text colour
+    return ballGroups[player] === 'yellow' ? 'black' : 'white';
+  };
+
+  // Helper function to determine icon for log entry
+  const getLogEntryIcon = (entry) => {
+    if (!entry || !entry.event) return <SportsIcon sx={{ color: '#6930c3' }} />;
+
+    const eventText = entry.event.toLowerCase();
+
+    if (eventText.includes('foul')) {
+      return <ErrorIcon sx={{ color: '#f44336' }} />;
+    } else if (eventText.includes('pocketed')) {
+      return <CheckCircleIcon sx={{ color: '#4caf50' }} />;
+    } else if (eventText.includes('win')) {
+      return <FlagIcon sx={{ color: '#ff9800' }} />;
+    } else {
+      return <SportsIcon sx={{ color: '#6930c3' }} />;
+    }
+  };
+
+  return (
+    <Paper
+      sx={{
+        p: 1, // Reduced padding
+        borderRadius: 3,
+        mb: 1, // Reduced margin
+        position: 'relative',
+        height: 150, // Even smaller fixed height
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 0.5, // Minimal margin
+        flexShrink: 0,
+        py: 0 // No vertical padding
+      }}>
+        <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem' }}>
+          <SportsIcon sx={{ mr: 0.5, color: '#6930c3', fontSize: '1rem' }} />
+          Shot History
+          <Tooltip title="See a history of all moves in the game">
+            <IconButton size="small" sx={{ ml: 0.5, p: 0.5 }}>
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Typography>
+      </Box>
+
+      <Box sx={{
+        flex: 1,
+        overflow: 'auto',
+        my: 0 // No margin
+      }}>
+        <List sx={{
+          width: '100%',
+          bgcolor: 'background.paper',
+          p: 0,
+          '& .MuiListItem-root': {
+            py: 0.5, // Very compact list items
+            minHeight: '40px' // Minimum height for list items
+          }
+        }}>
+          {recentLogs.length === 0 ? (
+            <ListItem>
+              <ListItemText
+                primary="No shots taken yet"
+                secondary="Game history will appear here"
+                primaryTypographyProps={{ fontSize: '0.9rem' }}
+                secondaryTypographyProps={{ fontSize: '0.75rem' }}
+              />
+            </ListItem>
+          ) : (
+            recentLogs.map((entry, index) => (
+              <React.Fragment key={index}>
+                {index !== 0 && <Divider component="li" sx={{ my: 0.5 }} />}
+                <ListItem
+                  alignItems="center" // Changed from flex-start for more compact layout
+                  dense // Enable dense mode for list items
+                  sx={{
+                    '&:hover': {
+                      bgcolor: alpha('#6930c3', 0.04)
+                    },
+                    py: 0.5 // Minimal padding
+                  }}
+                >
+                  <ListItemAvatar sx={{ minWidth: 40 }}> {/* Reduced avatar area width */}
+                    <Avatar
+                      sx={{
+                        bgcolor: getPlayerColor(entry.player),
+                        color: getPlayerTextColor(entry.player),
+                        width: 28, // Smaller avatar
+                        height: 28, // Smaller avatar
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      P{entry.player}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {getLogEntryIcon(entry)}
+                        <Typography
+                          sx={{ ml: 0.5, fontWeight: 500, fontSize: '0.85rem' }}
+                          variant="body2"
+                        >
+                          {entry.event}
+                        </Typography>
+                      </Box>
+                    }
+                    secondary={
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontSize: '0.7rem' }}
+                      >
+                        {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </Typography>
+                    }
+                    sx={{ my: 0 }} // No margin for text
+                  />
+                </ListItem>
+              </React.Fragment>
+            ))
+          )}
+        </List>
+      </Box>
+    </Paper>
+  );
+};
+
 
 // Physics constants for the simulation
 const FRICTION = 0.98;
@@ -634,7 +800,7 @@ function resolveCollision(ball1, ball2) {
     ball2.x += moveX;
     ball2.y += moveY;
 
-    // Calculate normalized collision vector
+    // Calculate normalised collision vector
     const nx = dx / distance;
     const ny = dy / distance;
 
@@ -823,6 +989,22 @@ export default function EnhancedSimulationPage() {
   // State for direct controls guide
   const [showDirectControlsGuide, setShowDirectControlsGuide] = useState(true);
 
+  // New states for pool rules
+  const [poolRules] = useState(new PoolRulesService());
+  const [gameState, setGameState] = useState({
+    isGameStarted: false,
+    currentPlayer: 1,
+    ballGroups: { 1: null, 2: null },
+    isBallGroupsAssigned: false,
+    message: "",
+    detailedMessage: "",
+    isGameOver: false,
+    winner: null
+  });
+  const [showRulesDialog, setShowRulesDialog] = useState(false);
+  const [ballGroupSelection, setBallGroupSelection] = useState(null);
+  const [collisionLog, setCollisionLog] = useState([]);
+
   // Get user_id from localStorage
   const user_id = localStorage.getItem('user_id');
 
@@ -843,6 +1025,40 @@ export default function EnhancedSimulationPage() {
       setShowDirectControlsGuide(false);
     }
   }, [useDirectControls, simulationStarted]);
+
+  // Initialize the game when the component mounts
+  useEffect(() => {
+    if (ballPositions.length > 0 && !gameState.isGameStarted) {
+      // Initialize the game with the current ball positions
+      const initialState = poolRules.initGame(ballPositions);
+      setGameState(prevState => ({
+        ...prevState,
+        isGameStarted: initialState.isGameStarted,
+        currentPlayer: initialState.currentPlayer,
+        isBreakShot: initialState.isBreakShot,
+        message: initialState.message
+      }));
+
+      // Show welcome dialog with rules
+      setShowRulesDialog(true);
+    }
+  }, [ballPositions]);
+
+  // Function to handle ball group selection
+  const handleBallGroupSelection = (color) => {
+    // Assign the selected ball group to the current player
+    poolRules.assignBallGroups(color);
+
+    // Update game state
+    setGameState(prevState => ({
+      ...prevState,
+      ballGroups: poolRules.playerBallGroups,
+      isBallGroupsAssigned: true,
+      message: `You selected ${color} balls.`
+    }));
+
+    setBallGroupSelection(null);
+  };
 
   // Calculate ball counts by color
   const ballCounts = {
@@ -880,6 +1096,82 @@ export default function EnhancedSimulationPage() {
     setActiveTab(newValue);
   };
 
+  // Function to check if a shot's first contact is legal
+  const checkFirstContact = (collisionLog) => {
+    // Early return if no collisions happened or game is not fully initialized
+    if (!collisionLog || collisionLog.length === 0 || !gameState.isBallGroupsAssigned) {
+      return { legal: true, message: "" };
+    }
+
+    // Get the current player's ball color
+    const playerColor = gameState.ballGroups[gameState.currentPlayer];
+
+    // If no color assigned yet, any colored ball is legal (except black)
+    if (!playerColor) {
+      // Find the first collision involving the cue ball
+      const firstCueCollision = collisionLog.find(
+        collision => collision.ball1.color === "white" || collision.ball2.color === "white"
+      );
+
+      if (firstCueCollision) {
+        // Get the other ball in the collision (not the cue)
+        const otherBall = firstCueCollision.ball1.color === "white"
+          ? firstCueCollision.ball2
+          : firstCueCollision.ball1;
+
+        // Black ball should not be hit first when table is open
+        if (otherBall.color === "black") {
+          return {
+            legal: false,
+            message: "Foul! Cannot hit the black ball first when the table is open."
+          };
+        }
+      }
+
+      return { legal: true, message: "" };
+    }
+
+    // For normal play - player must hit their color first
+    // or black if all their colors are pocketed
+    const playerColorRemaining = poolRules.remainingBalls[playerColor] > 0;
+    const shouldHitBlack = !playerColorRemaining;
+
+    // Find the first collision involving the cue ball
+    const firstCueCollision = collisionLog.find(
+      collision => collision.ball1.color === "white" || collision.ball2.color === "white"
+    );
+
+    if (firstCueCollision) {
+      // Get the other ball in the collision (not the cue)
+      const otherBall = firstCueCollision.ball1.color === "white"
+        ? firstCueCollision.ball2
+        : firstCueCollision.ball1;
+
+      // Check if the hit is legal based on the game state
+      if (shouldHitBlack) {
+        if (otherBall.color !== "black") {
+          return {
+            legal: false,
+            message: "Foul! You must hit the black ball first when all your balls are pocketed."
+          };
+        }
+      } else {
+        if (otherBall.color !== playerColor) {
+          const hitColor = otherBall.color === "black" ? "black" :
+            otherBall.color === "white" ? "white" :
+              `${otherBall.color} (opponent's ball)`;
+
+          return {
+            legal: false,
+            message: `Foul! You must hit your ${playerColor} balls first. You hit ${hitColor}.`
+          };
+        }
+      }
+    }
+
+    return { legal: true, message: "" };
+  };
+
   useEffect(() => {
     // Check for replay data in localStorage
     const replaySimulation = localStorage.getItem('replaySimulation');
@@ -914,49 +1206,52 @@ export default function EnhancedSimulationPage() {
     };
   }, [retryCount]);
 
-  // New function to load replay data
   const loadReplayData = (replay) => {
     try {
       setLoading(true);
-
+  
       // Extract the simulation data
       const simulationName = replay.simulation_name;
       const image_url = replay.image_url;
-      let ball_positions, initial_positions, pocketed_balls;
-
-      // Parse JSON strings if needed
-      if (typeof replay.ball_positions === 'string') {
-        ball_positions = JSON.parse(replay.ball_positions);
-      } else {
-        ball_positions = replay.ball_positions;
+      
+      let initialPositions, pocketedBalls;
+      
+      try {
+        // Parse initial_positions (which will contain current state if continuing)
+        if (typeof replay.initial_positions === 'string') {
+          initialPositions = JSON.parse(replay.initial_positions);
+        } else {
+          initialPositions = replay.initial_positions;
+        }
+        
+        // Parse pocketed_balls
+        if (typeof replay.pocketed_balls === 'string') {
+          pocketedBalls = JSON.parse(replay.pocketed_balls);
+        } else {
+          pocketedBalls = replay.pocketed_balls || [];
+        }
+      } catch (parseError) {
+        console.error("Error parsing ball positions:", parseError);
+        throw new Error("Failed to parse ball position data");
       }
-
-      if (typeof replay.initial_positions === 'string') {
-        initial_positions = JSON.parse(replay.initial_positions);
-      } else {
-        initial_positions = replay.initial_positions;
-      }
-
-      if (typeof replay.pocketed_balls === 'string') {
-        pocketed_balls = JSON.parse(replay.pocketed_balls);
-      } else {
-        pocketed_balls = replay.pocketed_balls || [];
-      }
-
+  
       // Set player level
       setPlayerLevel(replay.player_level || 'intermediate');
-
+  
       // Set image URL
       setProcessedImage(image_url);
-
-      // Initialize ball positions and other states
-      setBallPositions(initial_positions);
-      setInitialBallPositions(initial_positions);
-      setPocketedBalls(pocketed_balls);
-
+      
+      // Use modified initial_positions 
+      console.log("Loading ball positions");
+      setBallPositions(initialPositions);
+      setInitialBallPositions(initialPositions);
+      
+      // Set pocketed balls
+      setPocketedBalls(pocketedBalls);
+  
       // Show notification
       showNotification(`Loaded simulation "${simulationName}"`, 'info');
-
+  
       setLoading(false);
     } catch (error) {
       console.error('Error loading replay data:', error);
@@ -1292,9 +1587,9 @@ export default function EnhancedSimulationPage() {
     setShowShotLine(true);
   };
 
-  // Handler for taking a shot
+  // Updated handleShoot function with pool rules
   const handleShoot = (aimParams) => {
-    if (simulationStarted) return;
+    if (simulationStarted || gameState.isGameOver) return;
 
     // Apply the aim parameters to the white cue ball
     setBallPositions(prevBalls => {
@@ -1323,6 +1618,9 @@ export default function EnhancedSimulationPage() {
     setShowShotLine(false);
     setIsManualAiming(false);
     setActiveSuggestion(null);
+
+    // Reset the collision log
+    setCollisionLog([]);
 
     showNotification("Shot taken!", "success");
   };
@@ -1554,6 +1852,19 @@ export default function EnhancedSimulationPage() {
             if (updatedBalls[i].pocketed || updatedBalls[j].pocketed) continue;
 
             if (checkCollision(updatedBalls[i], updatedBalls[j])) {
+              // Log this collision if it involves the cue ball and it's the first shot frame
+              if ((updatedBalls[i].color === "white" || updatedBalls[j].color === "white") &&
+                simulationStep < 10) { // Only log in the first few frames to catch first contact
+                setCollisionLog(prev => [
+                  ...prev,
+                  {
+                    ball1: updatedBalls[i],
+                    ball2: updatedBalls[j],
+                    step: simulationStep
+                  }
+                ]);
+              }
+
               resolveCollision(updatedBalls[i], updatedBalls[j]);
             }
           }
@@ -1591,6 +1902,74 @@ export default function EnhancedSimulationPage() {
       }
     };
   }, [simulationStarted, simulationPaused, simulationSpeed, showTrajectories]);
+
+  // Effect to evaluate the shot when balls stop moving
+  useEffect(() => {
+    if (simulationStarted && simulationPaused) {
+      // Check for first contact fouls
+      const contactCheck = checkFirstContact(collisionLog);
+
+      // Create a shot parameters object to pass to the rules service
+      const shotParams = {
+        ...aimParameters,
+        firstContactLegal: contactCheck.legal
+      };
+
+      // If there's a first contact foul, handle it first
+      if (!contactCheck.legal) {
+        showNotification(contactCheck.message, "error");
+
+        // Switch player turn
+        const nextPlayer = gameState.currentPlayer === 1 ? 2 : 1;
+        setGameState(prevState => ({
+          ...prevState,
+          currentPlayer: nextPlayer,
+          message: contactCheck.message
+        }));
+
+        // Reset the collision log for the next shot
+        setCollisionLog([]);
+        return;
+      }
+
+      // The balls have stopped moving, time to evaluate the shot
+      const shotResult = poolRules.evaluateShot(
+        initialBallPositions,
+        ballPositions,
+        shotParams,
+        pocketedBalls
+      );
+
+      // Update game state based on the shot result
+      setGameState(prevState => ({
+        ...prevState,
+        currentPlayer: shotResult.currentPlayer,
+        ballGroups: shotResult.ballGroups,
+        isBallGroupsAssigned: shotResult.isBallGroupsAssigned,
+        message: shotResult.message,
+        detailedMessage: shotResult.detailedMessage,
+        isGameOver: shotResult.isGameOver,
+        winner: shotResult.winner
+      }));
+
+      // If the player can select a ball group, show the selection dialog
+      if (shotResult.canSelectGroup) {
+        setBallGroupSelection(true);
+      }
+
+      // Show appropriate notifications
+      if (shotResult.isFoul) {
+        showNotification(shotResult.message, "error");
+      } else if (shotResult.isGameOver) {
+        showNotification(`Game Over! Player ${shotResult.winner} wins!`, "success");
+      } else {
+        showNotification(shotResult.message, "info");
+      }
+
+      // Reset the collision log for the next shot
+      setCollisionLog([]);
+    }
+  }, [simulationStarted, simulationPaused]);
 
   // Updated handlePlaySimulation function
   const handlePlaySimulation = () => {
@@ -1668,7 +2047,7 @@ export default function EnhancedSimulationPage() {
     }
   };
 
-  // Handle simulation reset
+  // Modify handleResetSimulation to reset the game rules as well
   const handleResetSimulation = () => {
     // Cancel any ongoing animation
     if (animationRef.current) {
@@ -1687,7 +2066,24 @@ export default function EnhancedSimulationPage() {
     setActiveSuggestion(null);
     setIsManualAiming(false);
 
-    showNotification("Simulation reset", "info");
+    // Reset collision log
+    setCollisionLog([]);
+
+    // Reset game state
+    const initialState = poolRules.initGame(initialBallPositions);
+    setGameState({
+      isGameStarted: initialState.isGameStarted,
+      currentPlayer: initialState.currentPlayer,
+      ballGroups: { 1: null, 2: null },
+      isBallGroupsAssigned: false,
+      message: initialState.message,
+      detailedMessage: "",
+      isBreakShot: initialState.isBreakShot,
+      isGameOver: false,
+      winner: null
+    });
+
+    showNotification("Game reset", "info");
   };
 
   // Try reprocessing the image
@@ -1720,6 +2116,197 @@ export default function EnhancedSimulationPage() {
   // Get active ball count (not pocketed)
   const activeBallCount = ballPositions.filter(ball => !ball.pocketed).length;
 
+  // Ball Group Selection Dialog component
+  const BallGroupSelectionDialog = () => {
+    return (
+      <Dialog
+        open={ballGroupSelection !== null}
+        onClose={() => setBallGroupSelection(null)}
+        PaperProps={{ sx: { borderRadius: 3, maxWidth: 400 } }}
+      >
+        <DialogTitle sx={{ bgcolor: alpha('#6930c3', 0.05) }}>
+          Select Your Ball Group
+        </DialogTitle>
+        <DialogContent sx={{ pb: 2, pt: 3 }}>
+          <Typography variant="body1" gutterBottom>
+            You pocketed both red and yellow balls. Choose which group you want to play with:
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, gap: 3 }}>
+            <Button
+              variant="contained"
+              sx={{
+                bgcolor: '#f44336',
+                borderRadius: 2,
+                height: 80,
+                width: 120,
+                '&:hover': { bgcolor: '#d32f2f' }
+              }}
+              onClick={() => handleBallGroupSelection('red')}
+            >
+              <Typography variant="h6">Red</Typography>
+            </Button>
+            <Button
+              variant="contained"
+              sx={{
+                bgcolor: '#ffeb3b',
+                color: 'black',
+                borderRadius: 2,
+                height: 80,
+                width: 120,
+                '&:hover': { bgcolor: '#ffd600' }
+              }}
+              onClick={() => handleBallGroupSelection('yellow')}
+            >
+              <Typography variant="h6">Yellow</Typography>
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Rules Dialog component
+  const RulesDialog = () => {
+    return (
+      <Dialog
+        open={showRulesDialog}
+        onClose={() => setShowRulesDialog(false)}
+        PaperProps={{ sx: { borderRadius: 3, maxWidth: 600 } }}
+      >
+        <DialogTitle sx={{ bgcolor: alpha('#6930c3', 0.05) }}>
+          Pool Rules
+        </DialogTitle>
+        <DialogContent sx={{ pb: 1, pt: 2 }}>
+          <Typography variant="h6" gutterBottom>How to Play:</Typography>
+          <Typography variant="body2" paragraph>
+            1. <strong>Break:</strong> Player 1 starts with the break shot. If a ball is pocketed on the break, that player continues.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            2. <strong>Ball Assignment:</strong> Players are assigned to red or yellow balls after a ball is legally pocketed.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            3. <strong>Taking Turns:</strong> Players take turns shooting. Your turn continues if you pocket one of your balls.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            4. <strong>Fouls:</strong> Pocketing the cue ball (white) is a foul. The opponent gets their turn.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            5. <strong>Winning:</strong> To win, pocket all your assigned balls, then legally pocket the black ball.
+          </Typography>
+          <Typography variant="body2" paragraph>
+            6. <strong>Game Over:</strong> Pocketing the black ball too early or when it's not your turn results in losing the game.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button
+            variant="contained"
+            onClick={() => setShowRulesDialog(false)}
+            sx={{ borderRadius: 20, bgcolor: '#6930c3' }}
+          >
+            Got it!
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  // Remaining Balls Display component
+  const RemainingBallsDisplay = () => {
+    if (!gameState.isBallGroupsAssigned) return null;
+
+    return (
+      <Paper sx={{ p: 2, borderRadius: 2, mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>Remaining Balls:</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar
+                sx={{
+                  bgcolor: gameState.ballGroups[1] === 'red' ? '#f44336' : '#ffeb3b',
+                  color: gameState.ballGroups[1] === 'yellow' ? 'black' : 'white',
+                  width: 30,
+                  height: 30,
+                  mr: 1,
+                  fontSize: '0.8rem'
+                }}
+              >
+                P1
+              </Avatar>
+              <Typography variant="body2">
+                {gameState.ballGroups[1] && (
+                  `${poolRules.remainingBalls[gameState.ballGroups[1]]} ${gameState.ballGroups[1]} ball(s)`
+                )}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar
+                sx={{
+                  bgcolor: gameState.ballGroups[2] === 'red' ? '#f44336' : '#ffeb3b',
+                  color: gameState.ballGroups[2] === 'yellow' ? 'black' : 'white',
+                  width: 30,
+                  height: 30,
+                  mr: 1,
+                  fontSize: '0.8rem'
+                }}
+              >
+                P2
+              </Avatar>
+              <Typography variant="body2">
+                {gameState.ballGroups[2] && (
+                  `${poolRules.remainingBalls[gameState.ballGroups[2]]} ${gameState.ballGroups[2]} ball(s)`
+                )}
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+    );
+  };
+
+  // Game End Dialog component
+  const GameEndDialog = () => {
+    return (
+      <Dialog
+        open={gameState.isGameOver}
+        PaperProps={{ sx: { borderRadius: 3, maxWidth: 400 } }}
+      >
+        <DialogTitle sx={{
+          bgcolor: gameState.winner === 1 ? '#4caf50' : '#6930c3',
+          color: 'white',
+          textAlign: 'center',
+          py: 3
+        }}>
+          <Typography variant="h5">Game Over!</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', pt: 3 }}>
+          <Box sx={{ mb: 3 }}>
+            <EmojiEventsIcon sx={{ fontSize: 60, color: '#ffc107' }} />
+          </Box>
+          <Typography variant="h6" gutterBottom>
+            Player {gameState.winner} Wins!
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {gameState.detailedMessage || "The game has ended."}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={handleResetSimulation}
+            sx={{ borderRadius: 20, mr: 1 }}
+          >
+            New Game
+          </Button>
+          <ActionButton onClick={() => navigate('/results')}>
+            View Results
+          </ActionButton>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   // Get level icon based on player level
   const getLevelIcon = (level) => {
     switch (level) {
@@ -1730,7 +2317,9 @@ export default function EnhancedSimulationPage() {
       default:
         return <SportsIcon fontSize="small" />;
     }
-  }; return (
+  };
+
+  return (
     <Box>
       <Header>
         <NavBar>
@@ -1769,6 +2358,48 @@ export default function EnhancedSimulationPage() {
             {notification.message}
           </Alert>
         </Snackbar>
+
+        {/* Player indicator and Ball Group info */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          mb: 2,
+          p: 2,
+          borderRadius: 2,
+          bgcolor: alpha('#6930c3', 0.05)
+        }}>
+          <Typography variant="subtitle1" sx={{ mr: 2, fontWeight: 'bold' }}>
+            {gameState.isGameOver
+              ? `Game Over! Player ${gameState.winner} wins!`
+              : `Player ${gameState.currentPlayer}'s Turn`}
+          </Typography>
+
+          {gameState.isBallGroupsAssigned && (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" sx={{ mr: 1 }}>
+                Playing with:
+              </Typography>
+              <Box sx={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                bgcolor: gameState.ballGroups[gameState.currentPlayer] === 'red' ? '#f44336' : '#ffeb3b',
+                border: '1px solid rgba(0,0,0,0.2)',
+                display: 'inline-block',
+                mr: 1
+              }} />
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                {gameState.ballGroups[gameState.currentPlayer]?.toUpperCase() || ''}
+              </Typography>
+            </Box>
+          )}
+
+          {gameState.message && (
+            <Typography variant="body2" sx={{ ml: 'auto', color: 'text.secondary' }}>
+              {gameState.message}
+            </Typography>
+          )}
+        </Box>
 
         {/* Ball Status Indicators */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
@@ -1976,7 +2607,7 @@ export default function EnhancedSimulationPage() {
                         );
                       })}
 
-                      {/* Pool Cue Visualization - Enhanced */}
+                      {/* Pool Cue Visualisation */}
                       {showShotLine && !simulationStarted && (() => {
                         const cueBall = ballPositions.find(ball => ball.color === "white" && !ball.pocketed);
                         if (!cueBall) return null;
@@ -2018,7 +2649,7 @@ export default function EnhancedSimulationPage() {
                               height: '100%',
                               pointerEvents: 'none',
                               zIndex: 25, // Above balls
-                              overflow: 'visible', // NEW: Allow the cue to extend beyond the container
+                              overflow: 'visible', // Allow the cue to extend beyond the container
                             }}
                           >
                             <svg
@@ -2028,7 +2659,7 @@ export default function EnhancedSimulationPage() {
                                 position: 'absolute',
                                 top: 0,
                                 left: 0,
-                                overflow: 'visible' // NEW: Enable overflow to show cue outside the SVG bounds
+                                overflow: 'visible' //  Enable overflow to show cue outside the SVG bounds
                               }}
                             >
                               <defs>
@@ -2184,6 +2815,7 @@ export default function EnhancedSimulationPage() {
                           isSimulationPaused={simulationPaused}
                           setIsManualAiming={setIsManualAiming}
                           setActiveSuggestion={setActiveSuggestion}
+                          gameState={gameState}
                         />
                       )}
 
@@ -2325,7 +2957,7 @@ export default function EnhancedSimulationPage() {
                           <PlayArrowIcon />
                       }
                       onClick={handlePlaySimulation}
-                      disabled={loading || error || !processedImage}
+                      disabled={loading || error || !processedImage || gameState.isGameOver}
                       sx={{
                         borderRadius: 4,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -2341,7 +2973,7 @@ export default function EnhancedSimulationPage() {
                       variant="outlined"
                       startIcon={<RestartAltIcon />}
                       onClick={handleResetSimulation}
-                      disabled={loading || error || !processedImage || (!simulationStarted && !simulationPaused)}
+                      disabled={loading || error || !processedImage || (!simulationStarted && !simulationPaused && !gameState.isGameOver)}
                       sx={{ borderRadius: 4, mr: 1 }}
                     >
                       Reset
@@ -2375,6 +3007,30 @@ export default function EnhancedSimulationPage() {
           {/* Controls and Information Area */}
           <Grid item xs={12} md={4}>
             <Grid container spacing={2}>
+              {/* Ball Group Selection Dialog */}
+              <BallGroupSelectionDialog />
+
+              {/* Rules Dialog */}
+              <RulesDialog />
+
+              {/* Game End Dialog */}
+              <GameEndDialog />
+
+              {/* Remaining Balls Display */}
+              {gameState.isBallGroupsAssigned && (
+                <Grid item xs={12}>
+                  <RemainingBallsDisplay />
+                </Grid>
+              )}
+
+              {/* Shot History Panel */}
+              <Grid item xs={12}>
+                <ShotHistoryPanel
+                  gameLog={poolRules.gameLog}
+                  ballGroups={gameState.ballGroups}
+                />
+              </Grid>
+
               {/* Main Controls Card */}
               <Grid item xs={12}>
                 <ControlsCard>
@@ -2384,7 +3040,7 @@ export default function EnhancedSimulationPage() {
                       <StyledTab
                         label="Aim Shot"
                         icon={<AimIcon />}
-                        disabled={simulationStarted && !simulationPaused}
+                        disabled={(simulationStarted && !simulationPaused) || gameState.isGameOver}
                       />
                       <StyledTab
                         label="Ball Info"
@@ -2613,7 +3269,7 @@ export default function EnhancedSimulationPage() {
               </Grid>
 
               {/* Shot Suggestions Card - Only show when not actively simulating */}
-              {(!simulationStarted || simulationPaused) && (
+              {(!simulationStarted || simulationPaused) && !gameState.isGameOver && (
                 <Grid item xs={12}>
                   <ControlsCard sx={{ maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
                     <CardContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -2647,6 +3303,7 @@ export default function EnhancedSimulationPage() {
                           tableDimensions={{ width: TABLE_WIDTH, height: TABLE_HEIGHT }}
                           onApplySuggestion={handleApplySuggestion}
                           isSimulationStarted={simulationStarted && !simulationPaused}
+                          gameState={gameState}  /* Add this line */
                         />
                       </Box>
                     </CardContent>
@@ -2706,7 +3363,7 @@ export default function EnhancedSimulationPage() {
       </Dialog>
 
       {/* Standalone Power Control - always visible backup */}
-      {useDirectControls && !simulationStarted && (
+      {useDirectControls && !simulationStarted && !gameState.isGameOver && (
         <StandalonePowerControl
           onPowerChange={(newPower) => setAimParameters(prev => ({ ...prev, power: newPower }))}
           initialPower={aimParameters.power}

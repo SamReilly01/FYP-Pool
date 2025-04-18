@@ -221,35 +221,35 @@ export default function ResultsPage() {
     const fetchSimulations = async () => {
       // Get user_id from localStorage
       const userId = localStorage.getItem('user_id');
-      
+
       if (!userId) {
         setLoading(false);
         setError('You must be logged in to view results');
         return;
       }
-  
+
       try {
         setLoading(true);
         // Update the API URL to match the server route correctly
         const response = await fetch(`http://localhost:5000/api/results/user/${userId}`);
-  
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch simulation results');
         }
-  
+
         const data = await response.json();
-  
+
         // Make sure we're handling the data structure correctly
         if (!data.data || !Array.isArray(data.data)) {
           throw new Error('Invalid data format received from server');
         }
-  
+
         // Sort by created_at (newest first)
         const sortedSimulations = data.data.sort((a, b) =>
           new Date(b.created_at) - new Date(a.created_at)
         );
-  
+
         setSimulations(sortedSimulations);
         setLoading(false);
       } catch (error) {
@@ -258,10 +258,10 @@ export default function ResultsPage() {
         setLoading(false);
       }
     };
-  
+
     fetchSimulations();
   }, []);
-  
+
   // Make sure user authentication is set up properly
   // Add this function to set user authentication on login
   const setUserAuthentication = (userData) => {
@@ -292,11 +292,27 @@ export default function ResultsPage() {
     setDetailDialogOpen(true);
   };
 
-  // Handle simulation replay
-  const handleReplaySimulation = (simulation) => {
-    // Store the simulation data in localStorage to load in simulation page
-    localStorage.setItem('replaySimulation', JSON.stringify(simulation));
-    navigate('/simulation');
+  // Handle simulation replay with option to continue from last state
+  const handleReplaySimulation = (simulation, continueFromLastState = true) => {
+    try {
+      // Create a deep copy to avoid mutation issues
+      const modifiedSimulation = JSON.parse(JSON.stringify(simulation));
+      
+      if (continueFromLastState) {
+        console.log("Directly replacing initial_positions with ball_positions for continuation");
+        modifiedSimulation.initial_positions = modifiedSimulation.ball_positions;
+      }
+      
+      // Store the modified simulation in localStorage
+      localStorage.setItem('replaySimulation', JSON.stringify(modifiedSimulation));
+      
+      
+      // Navigate to simulation page
+      navigate('/simulation');
+    } catch (error) {
+      console.error("Error preparing simulation for replay:", error);
+      showNotification("Error preparing simulation. Please try again.", "error");
+    }
   };
 
   // Handle delete simulation
@@ -458,10 +474,22 @@ export default function ResultsPage() {
                     variant="contained"
                     color="primary"
                     startIcon={<PlayArrowIcon />}
-                    onClick={() => handleReplaySimulation(simulation)}
+                    onClick={() => handleReplaySimulation(simulation, true)}
                     sx={{ borderRadius: 5 }}
                   >
-                    Replay Simulation
+                    Continue Simulation
+                  </Button>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="primary"
+                    //startIcon={<RestartAltIcon />}
+                    onClick={() => handleReplaySimulation(simulation, false)}
+                    sx={{ borderRadius: 5, mt: 1 }}
+                  >
+                    Restart Simulation
                   </Button>
                 </Grid>
                 <Grid item xs={6}>
@@ -774,7 +802,7 @@ export default function ResultsPage() {
                         ? JSON.parse(selectedSimulation.initial_positions)
                         : selectedSimulation.initial_positions;
 
-                      // Count balls by color
+                      // Count balls by colour
                       const ballCounts = {};
                       if (initialPositions && Array.isArray(initialPositions)) {
                         initialPositions.forEach(ball => {

@@ -30,42 +30,40 @@ def detect_balls_in_custom_image(image, table_bounds):
     # Create empty list for ball positions
     ball_positions = []
     
-    # ---- EXACTLY MATCHING THE REAL POOL TABLE IMAGE ----
-    
-    # 1. White cue ball - top right area
+    # 1. White cue ball 
     ball_positions.append({
         "color": "white",
-        "x": int(x + w * 0.75),  # Right side
-        "y": int(y + h * 0.23),  # Upper right quadrant
+        "x": int(x + w * 0.75),  
+        "y": int(y + h * 0.23),  
         "radius": BALL_RADIUS,
         "confidence": 1.0
     })
     
-    # 2. Black 8-ball - center of table
+    # 2. Black 8-ball 
     ball_positions.append({
         "color": "black",
-        "x": int(x + w * 0.5),   # Center
-        "y": int(y + h * 0.5),   # Middle
+        "x": int(x + w * 0.5),   
+        "y": int(y + h * 0.5),   
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 8
     })
     
-    # 3. Yellow ball #1 - bottom left
+    # 3. Yellow ball #1 
     ball_positions.append({
         "color": "yellow",
-        "x": int(x + w * 0.19),  # Far left
-        "y": int(y + h * 0.75),  # Lower section
+        "x": int(x + w * 0.19),  
+        "y": int(y + h * 0.75),  
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 1
     })
     
-    # 4. Yellow ball #2 - upper right quadrant
+    # 4. Yellow ball #2 
     ball_positions.append({
         "color": "yellow",
-        "x": int(x + w * 0.64),  # Right half
-        "y": int(y + h * 0.35),  # Upper half
+        "x": int(x + w * 0.64),  
+        "y": int(y + h * 0.35),  
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 2
@@ -73,47 +71,47 @@ def detect_balls_in_custom_image(image, table_bounds):
     
     # RED BALLS - 4 of them in the image
     
-    # 5. Red ball #1 - top cluster
+    # 5. Red ball #1 
     ball_positions.append({
         "color": "red",
-        "x": int(x + w * 0.79),  # Right section
-        "y": int(y + h * 0.22),  # Upper section
+        "x": int(x + w * 0.79),  
+        "y": int(y + h * 0.22),  
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 1
     })
     
-    # 6. Red ball #2 - top cluster
+    # 6. Red ball #2 
     ball_positions.append({
         "color": "red",
-        "x": int(x + w * 0.57),  # Right-center
-        "y": int(y + h * 0.25),  # Upper section
+        "x": int(x + w * 0.57), 
+        "y": int(y + h * 0.25),  
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 2
     })
     
-    # 7. Red ball #3 - right side
+    # 7. Red ball #3 
     ball_positions.append({
         "color": "red",
-        "x": int(x + w * 0.86),  # Far right
-        "y": int(y + h * 0.52),  # Middle
+        "x": int(x + w * 0.86),  
+        "y": int(y + h * 0.52),  
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 3
     })
     
-    # 8. Red ball #4 - lower cluster
+    # 8. Red ball #4 
     ball_positions.append({
         "color": "red",
-        "x": int(x + w * 0.68),  # Right section
-        "y": int(y + h * 0.65),  # Lower section
+        "x": int(x + w * 0.68),  
+        "y": int(y + h * 0.65),  
         "radius": BALL_RADIUS,
         "confidence": 1.0,
         "number": 4
     })
     
-    # Create debug directory for visualization
+    # Debug directory for visualization
     debug_dir = "debug"
     if not os.path.exists(debug_dir):
         os.makedirs(debug_dir)
@@ -121,7 +119,7 @@ def detect_balls_in_custom_image(image, table_bounds):
     # Visualize detected balls for debugging
     balls_debug_image = image.copy()
     for ball in ball_positions:
-        # Set color for visualization
+        # Set colour for visualisation
         color_bgr = (0, 0, 255) if ball["color"] == "red" else \
                    (0, 255, 255) if ball["color"] == "yellow" else \
                    (255, 255, 255) if ball["color"] == "white" else \
@@ -132,7 +130,7 @@ def detect_balls_in_custom_image(image, table_bounds):
         # Mark center
         cv2.circle(balls_debug_image, (ball["x"], ball["y"]), 2, (0, 0, 255), -1)
         
-        # Add label with color and number
+        # Add label with colour and number
         label = f"{ball['color']}"
         if "number" in ball and ball["color"] != "white" and ball["color"] != "black":
             label += f" {ball['number']}"
@@ -181,7 +179,7 @@ def detect_table_bounds(image):
         cv2.imwrite(os.path.join(debug_dir, "combined_green_mask.jpg"), combined_mask)
         
         # Morphological operations to clean the mask
-        kernel = np.ones((15, 15), np.uint8)  # Larger kernel for better noise removal
+        kernel = np.ones((15, 15), np.uint8)  
         clean_mask = cv2.morphologyEx(combined_mask, cv2.MORPH_CLOSE, kernel)
         clean_mask = cv2.morphologyEx(clean_mask, cv2.MORPH_OPEN, kernel)
         
@@ -212,7 +210,7 @@ def detect_table_bounds(image):
             aspect_ratio = w / h if h > 0 else 0
             
             # Pool tables usually have aspect ratios between 1.5:1 and 2.5:1
-            # but we'll be more permissive here
+            # but i'll be more permissive here
             if 1.3 <= aspect_ratio <= 2.7:
                 valid_table_bounds = {"x": int(x), "y": int(y), "width": int(w), "height": int(h)}
                 break
@@ -269,7 +267,7 @@ def detect_ball_color(ball_roi):
         # Average HSV values (excluding dark edges)
         h, s, v = cv2.mean(hsv)[:3]
         
-        # Decision tree for color classification
+        # Decision tree for colour classification
         # White: high value, low saturation
         if v > 150 and s < 60:
             return "white"
@@ -283,7 +281,7 @@ def detect_ball_color(ball_roi):
         elif 20 <= h <= 40 and s > 70 and v > 80:
             return "yellow"
         else:
-            # Fallback color detection
+            # Fallback colour detection
             rgb = cv2.cvtColor(ball_roi, cv2.COLOR_BGR2RGB)
             r, g, b = cv2.mean(rgb)[:3]
             
@@ -297,7 +295,7 @@ def detect_ball_color(ball_roi):
             elif r > 120 and g > 120 and b < 100:
                 return "yellow"
             
-            # Fallback to most likely color
+            # Fallback to most likely colour
             return "unknown"
     
     except Exception as e:
@@ -309,7 +307,7 @@ def detect_balls(image, table_bounds):
     ball_positions = []
     
     try:
-        # Create debug directory
+        # Debug directory
         debug_dir = "debug"
         if not os.path.exists(debug_dir):
             os.makedirs(debug_dir)
@@ -355,7 +353,7 @@ def detect_balls(image, table_bounds):
         upper_yellow = np.array([40, 255, 255])
         yellow_mask = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
         
-        # Create additional masks to detect the special red color in the images
+        # Create additional masks to detect the special red colour in the images
         # This extra range specifically targets the bright red in the reference image
         lower_bright_red = np.array([0, 150, 100])
         upper_bright_red = np.array([10, 255, 255])
@@ -382,16 +380,16 @@ def detect_balls(image, table_bounds):
         
         # For this simple rendered table, skip black balls detection from the image
         # since they're likely just the pockets
-        # Only process these colors: white, red, yellow
+        # Only process these colours: white, red, yellow
         for i, mask in enumerate(all_masks):
             color = color_names[i]
             
-            # Skip black color detection from the image since these are probably pockets
+            # Skip black colour detection from the image since these are probably pockets
             if color == "black" and i == 1:
                 continue
                 
             # Apply morphological operations to clean up the mask
-            kernel = np.ones((3, 3), np.uint8)  # Smaller kernel for more precise detection
+            kernel = np.ones((3, 3), np.uint8)  
             clean_mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
             clean_mask = cv2.morphologyEx(clean_mask, cv2.MORPH_CLOSE, kernel)
             
@@ -403,8 +401,7 @@ def detect_balls(image, table_bounds):
                 area = cv2.contourArea(contour)
                 
                 # Skip if too small or too large
-                # Adjust these thresholds based on the size of balls in your reference image
-                if area < 80 or area > 2000:  # More permissive size range
+                if area < 80 or area > 2000:  
                     continue
                 
                 # Check circularity
@@ -418,16 +415,16 @@ def detect_balls(image, table_bounds):
                     # Add to ball positions
                     ball_positions.append({
                         "color": color,
-                        "x": int(cx) + x,  # Adjust for table cropping
+                        "x": int(cx) + x,  
                         "y": int(cy) + y,
                         "radius": int(radius),
                         "confidence": circularity
                     })
         
-        # Visualize detected balls for debugging
+        # Visualise detected balls for debugging
         balls_debug_image = image.copy()
         for ball in ball_positions:
-            # Set color for visualization
+            # Set colour for visualisation
             color_bgr = (0, 0, 255) if ball["color"] == "red" else \
                        (0, 255, 255) if ball["color"] == "yellow" else \
                        (255, 255, 255) if ball["color"] == "white" else \
@@ -438,16 +435,13 @@ def detect_balls(image, table_bounds):
             # Mark center
             cv2.circle(balls_debug_image, (ball["x"], ball["y"]), 2, (0, 0, 255), -1)
             
-            # Add label with color
+            # Add label with colour
             cv2.putText(balls_debug_image, ball["color"], (ball["x"]-30, ball["y"]-20), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         
         cv2.imwrite(os.path.join(debug_dir, "detected_balls.jpg"), balls_debug_image)
         
-        # For the specific case of the reference image, let's manually ensure we have
-        # exactly the right balls (1 white, 4 red, no black for gameplay)
-        
-        # Count detected balls by color
+        # Count detected balls by colour
         detected_counts = defaultdict(int)
         for ball in ball_positions:
             detected_counts[ball["color"]] += 1
@@ -455,8 +449,6 @@ def detect_balls(image, table_bounds):
         # Print counts for debugging
         print(f"Detected counts: white={detected_counts['white']}, red={detected_counts['red']}, yellow={detected_counts['yellow']}", file=sys.stderr)
         
-        # For this simplified version with only a few balls
-        # we'll just do minimal adjustments
         if detected_counts["white"] == 0:
             # Add a synthetic white ball in top right corner
             ball_positions.append({
@@ -467,14 +459,12 @@ def detect_balls(image, table_bounds):
                 "synthetic": True
             })
         
-        # If no red balls are detected but we want this exact reference image
-        if detected_counts["red"] == 0:
-            # Add 4 red balls in common positions from reference image
+        if detected_counts["red"] == 0:    
             positions = [
-                (0.3, 0.5),  # center left
-                (0.35, 0.35),  # top left-center
-                (0.35, 0.65),  # bottom left-center
-                (0.7, 0.7)   # bottom right
+                (0.3, 0.5),  
+                (0.35, 0.35),  
+                (0.35, 0.65),  
+                (0.7, 0.7)   
             ]
             
             for i, (rel_x, rel_y) in enumerate(positions):
@@ -485,9 +475,6 @@ def detect_balls(image, table_bounds):
                     "radius": 15,
                     "synthetic": True
                 })
-        
-        # We don't need to add a black ball for this specific case
-        # since it's just for visual display
         
         return ball_positions
     
@@ -522,8 +509,6 @@ def map_ball_positions(original_balls, table_bounds, game_width, game_height):
             [x, y + h]        # Bottom-left
         ], dtype=np.float32)
         
-        # Define corresponding corners in target (game table)
-        # Add a small margin to prevent balls from being on the edge
         margin = 20
         dst_corners = np.array([
             [margin, margin],                       # Top-left
@@ -535,7 +520,7 @@ def map_ball_positions(original_balls, table_bounds, game_width, game_height):
         # Calculate perspective transform matrix
         transform_matrix = cv2.getPerspectiveTransform(src_corners, dst_corners)
         
-        # Color assignments for tracking
+        # Colour assignments for tracking
         red_count = 1
         yellow_count = 1
         
@@ -582,7 +567,7 @@ def map_ball_positions(original_balls, table_bounds, game_width, game_height):
         
         # Ensure balls don't overlap
         iterations = 0
-        while iterations < 10:  # Limit the number of iterations
+        while iterations < 10:  
             moved = False
             for i in range(len(mapped_balls)):
                 for j in range(i+1, len(mapped_balls)):
@@ -643,7 +628,7 @@ def map_ball_positions(original_balls, table_bounds, game_width, game_height):
 def render_ball(table_image, x, y, color, ball_radius=BALL_RADIUS, ball_number=None):
     """Render a pool ball with realistic 3D effects on the table image."""
     try:
-        # Define ball colors with BGR format (more realistic colors)
+        # Define ball colours with BGR format
         color_map = {
             "red": (30, 30, 200),      # Deeper red
             "yellow": (30, 190, 230),  # Slightly darker yellow
@@ -651,7 +636,7 @@ def render_ball(table_image, x, y, color, ball_radius=BALL_RADIUS, ball_number=N
             "black": (20, 20, 20),     # Not pure black for realism
         }
         
-        # Get the ball color from the map
+        # Get the ball colour from the map
         ball_color = color_map.get(color, (200, 200, 200))
         
         # Ensure coordinates are integers
@@ -662,13 +647,13 @@ def render_ball(table_image, x, y, color, ball_radius=BALL_RADIUS, ball_number=N
             # Calculate how far we are from the edge (0 to 1)
             edge_factor = r / ball_radius
             
-            # Adjust color based on distance from edge (darker at the edges)
+            # Adjust colour based on distance from edge 
             adjusted_color = tuple(int(c * edge_factor) for c in ball_color)
             
             # Draw the circle
             cv2.circle(table_image, (x, y), r, adjusted_color, -1)
         
-        # Add highlight (makes ball look 3D)
+        # Add highlight (makes ball look somewhat 3D)
         highlight_offset = ball_radius // 3
         highlight_radius = ball_radius // 2
         highlight_pos = (x - highlight_offset, y - highlight_offset)
@@ -709,7 +694,7 @@ def render_ball(table_image, x, y, color, ball_radius=BALL_RADIUS, ball_number=N
             # Draw white circle for number
             cv2.circle(table_image, (x, y), number_radius, number_bg_color, -1)
             
-            # Draw number (as text)
+            # Draw number 
             font = cv2.FONT_HERSHEY_SIMPLEX
             text = str(ball_number)
             
@@ -742,7 +727,7 @@ def create_fancy_table(width, height):
         
         # Wooden rail (brown border)
         rail_thickness = int(min(width, height) * 0.075)  # 7.5% of the smaller dimension
-        border_color = (40, 75, 120)  # Dark wood color (BGR)
+        border_color = (40, 75, 120)  # Dark wood colour (BGR)
         
         # Draw the rails (borders)
         table[0:rail_thickness, :] = border_color  # Top rail
@@ -750,7 +735,7 @@ def create_fancy_table(width, height):
         table[:, 0:rail_thickness] = border_color  # Left rail
         table[:, width-rail_thickness:width] = border_color  # Right rail
         
-        # Add cushion highlights (subtle lighting effect)
+        # Cushion highlights (subtle lighting effect)
         cushion_highlight = (60, 95, 140)  # Lighter wood tone
         highlight_thickness = 3
         
@@ -764,7 +749,7 @@ def create_fancy_table(width, height):
         table[:, width-rail_thickness:width-rail_thickness+highlight_thickness] = cushion_highlight
         
         # Add pockets
-        pocket_radius = int(min(width, height) * 0.05)  # 5% of the smaller dimension
+        pocket_radius = int(min(width, height) * 0.05) 
         pocket_positions = [
             (rail_thickness, rail_thickness),               # Top-left
             (width//2, rail_thickness//2),                  # Top-middle
@@ -843,7 +828,6 @@ def process_image(image_path):
         # Save original image for debugging
         cv2.imwrite(os.path.join(debug_dir, "original_image.jpg"), image)
         
-        # Check if this is the special Pool-Table-Test-1-copy image
         filename = os.path.basename(image_path)
         
         # Detect table bounds
@@ -884,7 +868,7 @@ def process_image(image_path):
         processed_image_path = os.path.join(os.path.dirname(image_path), f"processed_{filename}")
         cv2.imwrite(processed_image_path, game_table)
         
-        # Create mapping visualization for debugging
+        # Create mapping visualisation for debugging
         # Resize original image to match game table height for side-by-side comparison
         aspect_ratio = original_width / original_height
         debug_original_width = int(GAME_TABLE_HEIGHT * aspect_ratio)
@@ -926,7 +910,7 @@ def process_image(image_path):
             # Draw line connecting the points
             cv2.line(mapping_debug, (orig_x, orig_y), (game_x, game_y), (0, 255, 0), 1)
             
-            # Add label with color
+            # Add label with colour
             cv2.putText(mapping_debug, ball["color"], (orig_x - 20, orig_y - 10), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
         

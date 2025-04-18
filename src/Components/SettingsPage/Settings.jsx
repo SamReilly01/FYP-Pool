@@ -767,7 +767,7 @@ export default function SettingsPage() {
           Settings
         </MainHeading>
         <SubHeading variant="body1">
-          Customize your pool game simulation experience to match your preferences
+          Customise your pool game simulation experience to match your preferences
         </SubHeading>
       </Header>
 
@@ -1330,7 +1330,7 @@ export default function SettingsPage() {
 
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" paragraph>
-                      <strong>Dark mode</strong> helps reduce eye strain by using darker colors and can save battery on devices with OLED screens.
+                      <strong>Dark mode</strong> helps reduce eye strain by using darker colours and can save battery on devices with OLED screens.
                     </Typography>
 
                     <Box sx={{

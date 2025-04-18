@@ -192,23 +192,23 @@ const StyledTabs = styled(Tabs)(({ theme }) => ({
   },
 }));
 
-// Updated StepCard with better number positioning
+// StepCard 
 const StepCard = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
-  paddingLeft: theme.spacing(6), // Add more left padding to accommodate the number
+  paddingLeft: theme.spacing(6), 
   borderRadius: theme.spacing(1),
   marginBottom: theme.spacing(2),
-  marginTop: theme.spacing(3), // Add top margin to account for the number
+  marginTop: theme.spacing(3), 
   background: 'rgba(105, 48, 195, 0.03)',
   border: '1px solid rgba(105, 48, 195, 0.1)',
   position: 'relative',
 }));
 
-// Repositioned step number
+// Step number
 const StepNumber = styled(Box)(({ theme }) => ({
   position: 'absolute',
-  top: theme.spacing(1), // Move down from the top edge of the card
-  left: theme.spacing(1), // Move in from the left edge of the card
+  top: theme.spacing(1), 
+  left: theme.spacing(1), 
   width: theme.spacing(4),
   height: theme.spacing(4),
   borderRadius: '50%',
@@ -275,7 +275,7 @@ export default function HelpPage() {
               </Box>
               <CardContent>
                 <Typography variant="body2" paragraph>
-                  Learn the basics of how to use our pool game simulation tool to analyze and improve your game.
+                  Learn the basics of how to use our pool game simulation tool to analyse and improve your game.
                 </Typography>
                 <Button 
                   variant="outlined" 
@@ -381,7 +381,7 @@ export default function HelpPage() {
               </SectionTitle>
               
               <Typography variant="body1" paragraph>
-                Our pool game simulation uses advanced computer vision and physics engines to analyze pool table images, 
+                Our pool game simulation uses advanced computer vision and physics engines to analyse pool table images, 
                 detect balls, and provide realistic simulations of shots. Here's the step-by-step process:
               </Typography>
               
@@ -408,13 +408,13 @@ export default function HelpPage() {
                 <StepNumber>2</StepNumber>
                 <Typography variant="h6" gutterBottom>Image Processing</Typography>
                 <Typography variant="body2" paragraph>
-                  Our system analyzes your image to identify the table boundaries and detect all balls. We use advanced computer 
-                  vision algorithms to recognize different ball colors and their positions on the table.
+                  Our system analyses your image to identify the table boundaries and detect all balls. We use advanced computer 
+                  vision algorithms to recognise different ball colours and their positions on the table.
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
                   <ImageSearchIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="body2">
-                    The system can handle various lighting conditions and table colors, but clear images 
+                    The system can handle various lighting conditions and table colours, but clear images 
                     will always produce the best results.
                   </Typography>
                 </Box>
@@ -445,7 +445,7 @@ export default function HelpPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
                   <PlayArrowIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="body2">
-                    Adjust simulation speed or enable trajectory tracking to visualize the full path of each ball.
+                    Adjust simulation speed or enable trajectory tracking to visualise the full path of each ball.
                   </Typography>
                 </Box>
               </StepCard>
@@ -491,7 +491,7 @@ export default function HelpPage() {
                 </StyledAccordionSummary>
                 <AccordionDetails>
                   <Typography variant="body2" paragraph>
-                    Currently, our system supports standard 8-ball and 9-ball pool setups. The system can recognize and 
+                    Currently, our system supports standard 8-ball and 9-ball pool setups. The system can recognise and 
                     simulate games with red and yellow balls, black balls, and white cue balls. Support for additional 
                     game types will be added in future updates.
                   </Typography>
@@ -629,12 +629,12 @@ export default function HelpPage() {
               
               <StyledAccordion>
                 <StyledAccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle1">Can I simulate spin or english on the ball?</Typography>
+                  <Typography variant="subtitle1">Can I simulate spin on the ball?</Typography>
                 </StyledAccordionSummary>
                 <AccordionDetails>
                   <Typography variant="body2">
                     Currently, our simulation supports basic shot mechanics without spin effects. We're working on adding 
-                    advanced spin controls in a future update to simulate draw, follow, and side english. Stay tuned!
+                    advanced spin controls in a future update to simulate draw, follow, and side spin. Stay tuned!
                   </Typography>
                 </AccordionDetails>
               </StyledAccordion>
@@ -772,7 +772,7 @@ export default function HelpPage() {
                           <ListItemIcon><LightbulbIcon color="primary" /></ListItemIcon>
                           <ListItemText 
                             primary="Use the 'Ghost Ball' method for aiming" 
-                            secondary="Visualize where the cue ball needs to be to hit the object ball in your desired direction"
+                            secondary="Visualise where the cue ball needs to be to hit the object ball in your desired direction"
                           />
                         </ListItem>
                       </List>
@@ -797,7 +797,7 @@ export default function HelpPage() {
                         <ListItem>
                           <ListItemIcon><LightbulbIcon color="primary" /></ListItemIcon>
                           <ListItemText 
-                            primary="Use the trajectory visualization for planning complex shots" 
+                            primary="Use the trajectory visualisation for planning complex shots" 
                             secondary="Seeing the full path helps understand table geometry"
                           />
                         </ListItem>
@@ -805,7 +805,7 @@ export default function HelpPage() {
                           <ListItemIcon><LightbulbIcon color="primary" /></ListItemIcon>
                           <ListItemText 
                             primary="Compare different approaches to the same shot" 
-                            secondary="Save multiple simulations to analyze the most effective strategy"
+                            secondary="Save multiple simulations to analyse the most effective strategy"
                           />
                         </ListItem>
                       </List>

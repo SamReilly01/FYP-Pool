@@ -2,7 +2,7 @@ const express = require('express');
 const pool = require('../models/db');
 const router = express.Router();
 
-// Create a new simulation result entry
+// New simulation result entry
 router.post('/save', async (req, res) => {
     const { user_id, simulation_name, image_url, ball_positions, initial_positions, pocketed_balls, player_level } = req.body;
     
@@ -90,7 +90,7 @@ router.delete('/:id', async (req, res) => {
     const { user_id } = req.body;
 
     try {
-        // First check if the simulation belongs to the user
+        // Check if the simulation belongs to the user
         const checkResult = await pool.query(
             'SELECT user_id FROM simulation_results WHERE id = $1',
             [id]

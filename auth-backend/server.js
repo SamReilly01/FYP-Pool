@@ -20,7 +20,7 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Route registrations 
-app.use('/api/auth', authRoutes); // This makes all auth routes available under /api/auth
+app.use('/api/auth', authRoutes); 
 app.use('/api', uploadRoutes);
 app.use('/api/image', imageProcessingRoutes);
 app.use('/api/results', resultsRoutes);

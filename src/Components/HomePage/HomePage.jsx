@@ -180,7 +180,7 @@ export default function HomePage() {
   const additionalFeatures = [
     {
       title: 'Settings',
-      description: 'Customize your experience and account preferences',
+      description: 'Customise your experience and account preferences',
       icon: <SettingsIcon fontSize="large" />,
       color: '#3a86ff',
       route: '/settings'
@@ -223,7 +223,7 @@ export default function HomePage() {
           {userName ? `Welcome, ${userName}!` : 'Provide You the Best Pool Game Service'}
         </MainHeading>
         <SubHeading variant="body1">
-          Upload your pool table images and let our AI analyze the best shots for you. You can trust us!
+          Upload your pool table images and let our AI analyse the best shots for you. You can trust us!
         </SubHeading>
         <ActionButton 
           variant="contained"
@@ -239,7 +239,7 @@ export default function HomePage() {
           <SectionTitle variant="subtitle1">OUR SERVICES</SectionTitle>
           <SectionHeading variant="h2">We Provide Best Quality Service</SectionHeading>
           <Typography variant="body1" color="textSecondary" sx={{ maxWidth: 700, mx: 'auto' }}>
-            Our pool game simulation offers state-of-the-art image recognition, physics engine, and easy-to-use interface
+            Our pool game simulation offers state-of-the-art image recognition, a physics engine, and easy-to-use interface
             to help improve your game. Perfect for players of all levels.
           </Typography>
         </Box>

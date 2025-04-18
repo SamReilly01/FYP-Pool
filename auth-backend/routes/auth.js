@@ -78,7 +78,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Update email route (protected)
+// Update email route
 router.post('/update-email', authenticateToken, async (req, res) => {
     const { user_id, new_email } = req.body;
 
@@ -111,8 +111,7 @@ router.post('/update-email', authenticateToken, async (req, res) => {
     }
 });
 
-// Update password route (protected)
-// Check your auth.js file for a route defined like this:
+// Update password route
 router.post('/update-password', authenticateToken, async (req, res) => {
     const { user_id, current_password, new_password } = req.body;
 
@@ -160,7 +159,7 @@ router.get('/test', (req, res) => {
     res.json({ message: 'Auth route is working' });
   });
 
-// Get user profile route (protected)
+// Get user profile route
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query(
@@ -181,10 +180,10 @@ router.get('/profile', authenticateToken, async (req, res) => {
     }
 });
 
-// Delete account route (protected)
+// Delete account route
 router.delete('/account', authenticateToken, async (req, res) => {
     try {
-        // Delete user's data (in a real app, you might archive instead)
+        // Delete user's data
         await pool.query('DELETE FROM simulation_results WHERE user_id = $1', [req.user.id]);
         await pool.query('DELETE FROM uploaded_images WHERE user_id = $1', [req.user.id]);
 

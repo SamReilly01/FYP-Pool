@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useMemo } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// Create a context for color mode
+// Create a context for colour mode
 export const ColorModeContext = createContext({
   toggleColorMode: () => {},
   mode: 'light',
@@ -21,7 +21,7 @@ export const ThemeContextProvider = ({ children }) => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, []);
 
-  // Color mode toggler
+  // Colour mode toggler
   const colorMode = useMemo(() => ({
     toggleColorMode: () => {
       setMode((prevMode) => {
@@ -34,7 +34,7 @@ export const ThemeContextProvider = ({ children }) => {
     mode,
   }), [mode]);
 
-  // Theme definition - enhanced with more color options and component overrides
+  // Theme definition 
   const theme = useMemo(() => createTheme({
     palette: {
       mode,

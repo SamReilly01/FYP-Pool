@@ -39,7 +39,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 15 * 1024 * 1024, // Increased to 15MB limit
+    fileSize: 15 * 1024 * 1024, 
   }
 });
 
@@ -58,7 +58,7 @@ if (!fs.existsSync(debugDir)) {
 // Image Upload Route with better error handling
 router.post('/upload', upload.single('image'), async (req, res) => {
   console.log('📥 Image received for upload:', req.file);
-  console.log('Request body:', req.body); // Log the entire request body for debugging
+  console.log('Request body:', req.body); 
 
   if (!req.file) {
     console.error('❌ No file uploaded.');
@@ -164,7 +164,7 @@ router.post('/process', async (req, res) => {
       message: 'Image processed successfully',
       transformed_image_url: '/uploads/processed_default_table.jpg', // Use virtual table
       ball_positions: [
-        // White cue ball - top right
+        // White cue ball 
         { 
           color: "white", 
           x: 600, 
@@ -174,7 +174,7 @@ router.post('/process', async (req, res) => {
           radius: 14
         },
         
-        // Black 8-ball - center
+        // Black 8-ball
         { 
           color: "black", 
           x: 400, 
@@ -185,7 +185,7 @@ router.post('/process', async (req, res) => {
           number: 8
         },
         
-        // Yellow ball #1 - bottom left
+        // Yellow ball #1 
         { 
           color: "yellow", 
           x: 152, 
@@ -196,7 +196,7 @@ router.post('/process', async (req, res) => {
           radius: 14
         },
         
-        // Yellow ball #2 - top right
+        // Yellow ball #2 
         { 
           color: "yellow", 
           x: 512, 
@@ -252,7 +252,6 @@ router.post('/process', async (req, res) => {
     console.log(`📊 Using ${codeResponse.ball_positions.length} coded ball positions with virtual table`);
     return res.json(codeResponse);
   }
-  // =========== END OF SPECIAL HANDLING FOR TARGET IMAGE =============
 
   const absoluteImagePath = path.join(__dirname, '../', image_path);
   console.log('🔍 Absolute Image Path:', absoluteImagePath);
@@ -275,11 +274,10 @@ router.post('/process', async (req, res) => {
   // Configure Python options with increased timeout
   const options = {
     args: [absoluteImagePath],
-    pythonOptions: ['-u'],  // unbuffered output
+    pythonOptions: ['-u'],  
     mode: 'text',
     pythonPath: 'python',  // use 'python3' if that's your system's Python 3 command
     scriptPath: path.join(__dirname, '../'),  // Ensure correct script path
-    // Increase timeout for large images
     timeout: 60000  // 60 seconds timeout
   };
 
@@ -387,7 +385,7 @@ router.post('/process', async (req, res) => {
       details: {
         input_path: absoluteImagePath,
         error_type: error.name,
-        error_output: errorOutput.slice(0, 5), // Limit to first 5 error messages
+        error_output: errorOutput.slice(0, 5), 
         exists: fs.existsSync(absoluteImagePath)
       },
       // Provide fallback values to prevent UI errors
@@ -406,7 +404,7 @@ router.post('/process', async (req, res) => {
   }
 });
 
-// Add a new endpoint to get debug information
+// New endpoint to get debug information
 router.get('/debug', async (req, res) => {
   try {
     const debugDir = path.join(__dirname, '../debug');
@@ -456,7 +454,7 @@ router.post('/cleanup', async (req, res) => {
     let deletedCount = 0;
 
     // Delete all files except the most recent ones
-    const MAX_FILES_TO_KEEP = 50; // Keep last 50 debug files
+    const MAX_FILES_TO_KEEP = 50; 
 
     if (files.length > MAX_FILES_TO_KEEP) {
       // Sort files by modification time (oldest first)
@@ -528,7 +526,7 @@ router.post('/reprocess', async (req, res) => {
         message: 'Image reprocessed successfully',
         transformed_image_url: image_path,
         ball_positions: [
-          // White cue ball - top right
+          // White cue ball 
           { 
             color: "white", 
             x: 600, 
@@ -538,7 +536,7 @@ router.post('/reprocess', async (req, res) => {
             radius: 14
           },
           
-          // Black 8-ball - center
+          // Black 8-ball 
           { 
             color: "black", 
             x: 400, 
@@ -548,7 +546,7 @@ router.post('/reprocess', async (req, res) => {
             radius: 14
           },
           
-          // Yellow ball #1 - bottom left
+          // Yellow ball #1 
           { 
             color: "yellow", 
             x: 152, 
@@ -559,7 +557,7 @@ router.post('/reprocess', async (req, res) => {
             radius: 14
           },
           
-          // Yellow ball #2 - top right
+          // Yellow ball #2 
           { 
             color: "yellow", 
             x: 512, 
@@ -614,9 +612,8 @@ router.post('/reprocess', async (req, res) => {
       
       return res.json(codeResponse);
     }
-    // =========== END OF SPECIAL HANDLING FOR TARGET IMAGE IN REPROCESS =============
 
-    // Use the normal process endpoint logic
+    // Normal process endpoint logic
     const options = {
       args: [absoluteImagePath],
       pythonOptions: ['-u'],

@@ -54,7 +54,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             VALUES ($1, $2, NOW())
             RETURNING *;
         `;
-        const values = [parseInt(user_id, 10), filePath]; // To ensure user_id is an integer
+        const values = [parseInt(user_id, 10), filePath]; // Ensure user_id is an integer
 
         const result = await pool.query(query, values);
 

@@ -69,27 +69,39 @@ export default function ShotSuggestion({
   playerLevel, 
   tableDimensions, 
   onApplySuggestion, 
-  isSimulationStarted 
+  isSimulationStarted,
+  gameState // Added gameState to know player's ball group
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [activeSuggestion, setActiveSuggestion] = useState(null);
 
-  // Calculate shot suggestions when ball positions change
+  // Calculate shot suggestions when ball positions or game state changes
   useEffect(() => {
     if (!ballPositions || ballPositions.length === 0 || isSimulationStarted) {
       setSuggestions([]);
       return;
     }
 
-    // Generate shot suggestions based on current table state
-    const newSuggestions = generateShotSuggestions(ballPositions, playerLevel, tableDimensions);
+    // Generate shot suggestions based on current table state and game state
+    const newSuggestions = generateShotSuggestions(
+      ballPositions, 
+      playerLevel, 
+      tableDimensions,
+      gameState
+    );
+    
     setSuggestions(newSuggestions);
-  }, [ballPositions, playerLevel, tableDimensions, isSimulationStarted]);
+  }, [ballPositions, playerLevel, tableDimensions, isSimulationStarted, gameState]);
 
   // Refresh suggestions
   const handleRefreshSuggestions = () => {
-    const newSuggestions = generateShotSuggestions(ballPositions, playerLevel, tableDimensions);
+    const newSuggestions = generateShotSuggestions(
+      ballPositions, 
+      playerLevel, 
+      tableDimensions,
+      gameState
+    );
     setSuggestions(newSuggestions);
   };
 
@@ -199,8 +211,8 @@ export default function ShotSuggestion({
   );
 }
 
-// Function to generate shot suggestions based on ball positions and player level
-function generateShotSuggestions(ballPositions, playerLevel, tableDimensions) {
+// Improved function to generate shot suggestions based on ball positions, player level, and game state
+function generateShotSuggestions(ballPositions, playerLevel, tableDimensions, gameState) {
   // Default suggestions if calculation fails
   const defaultSuggestions = [
     {
@@ -220,13 +232,11 @@ function generateShotSuggestions(ballPositions, playerLevel, tableDimensions) {
     // If no cue ball, return default suggestions
     if (!cueBall) return defaultSuggestions;
     
-    // Find active object balls (non-pocketed)
-    const objectBalls = ballPositions.filter(ball => 
-      ball.color !== "white" && !ball.pocketed
-    );
+    // Determine which balls the player should be targeting based on game state
+    const validTargetBalls = determineValidTargetBalls(ballPositions, gameState);
     
-    // If no object balls, return empty
-    if (objectBalls.length === 0) return [];
+    // If no valid target balls, return empty array or default
+    if (validTargetBalls.length === 0) return defaultSuggestions;
     
     // Define table dimensions
     const TABLE_WIDTH = tableDimensions?.width || 800;
@@ -246,18 +256,22 @@ function generateShotSuggestions(ballPositions, playerLevel, tableDimensions) {
     // Array to hold all potential shots
     const potentialShots = [];
     
-    // For each object ball, calculate possible shots to each pocket
-    objectBalls.forEach(objectBall => {
+    // For each valid target ball, calculate possible shots to each pocket
+    validTargetBalls.forEach(objectBall => {
       POCKET_POSITIONS.forEach(pocket => {
         // Calculate vector from object ball to pocket
         const objToPocketX = pocket.x - objectBall.x;
         const objToPocketY = pocket.y - objectBall.y;
         const objToPocketDist = Math.sqrt(objToPocketX * objToPocketX + objToPocketY * objToPocketY);
         
+        // Normalise the vector
+        const objToPocketNormX = objToPocketX / objToPocketDist;
+        const objToPocketNormY = objToPocketY / objToPocketDist;
+        
         // Calculate required position for cue ball to hit object ball correctly
         // (opposite direction from pocket, at 2 * ball radius distance)
-        const requiredCueX = objectBall.x - (objToPocketX / objToPocketDist) * (BALL_RADIUS * 2);
-        const requiredCueY = objectBall.y - (objToPocketY / objToPocketDist) * (BALL_RADIUS * 2);
+        const requiredCueX = objectBall.x - objToPocketNormX * (BALL_RADIUS * 2);
+        const requiredCueY = objectBall.y - objToPocketNormY * (BALL_RADIUS * 2);
         
         // Calculate distance from current cue position to required position
         const cueToPosX = requiredCueX - cueBall.x;
@@ -269,39 +283,97 @@ function generateShotSuggestions(ballPositions, playerLevel, tableDimensions) {
         if (angle < 0) angle += 360; // Convert to 0-360 range
         
         // Check if path from object to pocket is clear
-        const pathClear = isPathClear(objectBall, pocket, ballPositions);
+        const pathToPocketClear = isPathClear(objectBall, pocket, ballPositions);
         
         // Check if path from cue to object is clear
-        const cuePath = isPathClear(cueBall, { x: requiredCueX, y: requiredCueY }, ballPositions);
+        const pathToBallClear = isPathClear(cueBall, { x: requiredCueX, y: requiredCueY }, ballPositions);
         
-        // Calculate shot difficulty based on distances and angles
-        const shotDifficulty = calculateShotDifficulty(
-          cueToPosDistance, 
-          objToPocketDist, 
-          pathClear, 
-          cuePath
-        );
-        
-        // Determine appropriate power based on distance
-        const power = Math.min(0.5 + (cueToPosDistance / 500), 0.95);
-        
-        // Add shot to potential shots array
-        potentialShots.push({
-          objectBall,
-          pocket,
-          difficulty: shotDifficulty,
-          angle,
-          power,
-          pathClear,
-          cuePathClear: cuePath,
-          requiredCuePos: { x: requiredCueX, y: requiredCueY },
-          distance: cueToPosDistance
-        });
+        // Only consider this a valid shot if both paths are reasonably clear
+        if (pathToPocketClear && pathToBallClear) {
+          // Calculate shot difficulty based on distances and angles
+          const shotDifficulty = calculateShotDifficulty(
+            cueToPosDistance, 
+            objToPocketDist, 
+            pathToPocketClear, 
+            pathToBallClear
+          );
+          
+          // Determine appropriate power based on distance
+          const power = Math.min(0.5 + (cueToPosDistance / 500), 0.95);
+          
+          // Add shot to potential shots array
+          potentialShots.push({
+            objectBall,
+            pocket,
+            difficulty: shotDifficulty,
+            angle,
+            power,
+            pathClear: pathToPocketClear,
+            cuePathClear: pathToBallClear,
+            requiredCuePos: { x: requiredCueX, y: requiredCueY },
+            distance: cueToPosDistance
+          });
+        }
       });
     });
     
     // Sort shots by difficulty (easiest first)
     potentialShots.sort((a, b) => a.difficulty - b.difficulty);
+    
+    // If no potential shots were found, but we have valid target balls,
+    // create at least one suggestion for each target ball
+    if (potentialShots.length === 0 && validTargetBalls.length > 0) {
+      validTargetBalls.forEach(targetBall => {
+        // Find the closest pocket
+        let closestPocket = POCKET_POSITIONS[0];
+        let minDistance = Number.MAX_VALUE;
+        
+        POCKET_POSITIONS.forEach(pocket => {
+          const dx = pocket.x - targetBall.x;
+          const dy = pocket.y - targetBall.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPocket = pocket;
+          }
+        });
+        
+        // Calculate basic shot parameters
+        const objToPocketX = closestPocket.x - targetBall.x;
+        const objToPocketY = closestPocket.y - targetBall.y;
+        const objToPocketDist = Math.sqrt(objToPocketX * objToPocketX + objToPocketY * objToPocketY);
+        
+        // Normalise the vector
+        const objToPocketNormX = objToPocketX / objToPocketDist;
+        const objToPocketNormY = objToPocketY / objToPocketDist;
+        
+        // Calculate angle from cue ball to target ball
+        const cueToBallX = targetBall.x - cueBall.x;
+        const cueToBallY = targetBall.y - cueBall.y;
+        const cueToBallDist = Math.sqrt(cueToBallX * cueToBallX + cueToBallY * cueToBallY);
+        
+        // Calculate angle for direct shot at the ball
+        let angle = Math.atan2(cueToBallY, cueToBallX) * (180 / Math.PI);
+        if (angle < 0) angle += 360; // Convert to 0-360 range
+        
+        // Add as challenging shot even if not ideal
+        potentialShots.push({
+          objectBall: targetBall,
+          pocket: closestPocket,
+          difficulty: 0.7, // Mark as a challenging shot
+          angle: angle,
+          power: 0.6, // Medium power
+          pathClear: false, // Path may not be clear
+          cuePathClear: true, // Direct path to the ball
+          requiredCuePos: { x: cueBall.x, y: cueBall.y },
+          distance: cueToBallDist
+        });
+      });
+      
+      // Re-sort after adding these fallback shots
+      potentialShots.sort((a, b) => a.difficulty - b.difficulty);
+    }
     
     // Filter shots based on player level
     let filteredShots = [];
@@ -326,9 +398,15 @@ function generateShotSuggestions(ballPositions, playerLevel, tableDimensions) {
         filteredShots = potentialShots.filter(shot => shot.difficulty < 0.5).slice(0, 2);
     }
     
+    // If we still have no filtered shots but have potentialShots,
+    // include at least one regardless of difficulty
+    if (filteredShots.length === 0 && potentialShots.length > 0) {
+      filteredShots = [potentialShots[0]];
+    }
+    
     // Transform filtered shots into suggestion objects
     const suggestions = filteredShots.map(shot => {
-      // Categorize shot complexity
+      // Categorise shot complexity
       let complexity = 'simple';
       if (shot.difficulty > 0.6) complexity = 'challenging';
       else if (shot.difficulty > 0.3) complexity = 'moderate';
@@ -390,13 +468,66 @@ function generateShotSuggestions(ballPositions, playerLevel, tableDimensions) {
   }
 }
 
+// Helper function to determine which balls the player should target based on game state
+function determineValidTargetBalls(ballPositions, gameState) {
+  // Filter out pocketed balls
+  const activeBalls = ballPositions.filter(ball => !ball.pocketed);
+  
+  // If game state is not provided or game hasn't started, allow all balls except black and white
+  if (!gameState || !gameState.isGameStarted) {
+    return activeBalls.filter(ball => ball.color !== "white" && ball.color !== "black");
+  }
+  
+  // Get the current player
+  const currentPlayer = gameState.currentPlayer || 1;
+  
+  // Check if ball groups have been assigned by examining both possible property names
+  // Some parts of the code use playerBallGroups (from poolRulesService) and others use ballGroups
+  const isBallGroupsAssigned = gameState.isBallGroupsAssigned || false;
+  
+  if (!isBallGroupsAssigned) {
+    // Table is "open" - player can hit any colored ball except black
+    return activeBalls.filter(ball => ball.color !== "white" && ball.color !== "black");
+  }
+  
+  // Try to get the player's assigned ball color from either property
+  let playerColor = null;
+  
+  // First check playerBallGroups (from poolRulesService)
+  if (gameState.playerBallGroups && gameState.playerBallGroups[currentPlayer]) {
+    playerColor = gameState.playerBallGroups[currentPlayer];
+  }
+  // Then check ballGroups (used in the UI components)
+  else if (gameState.ballGroups && gameState.ballGroups[currentPlayer]) {
+    playerColor = gameState.ballGroups[currentPlayer];
+  }
+  
+  // If we still don't have a color, log the game state for debugging and return all colored balls
+  if (!playerColor) {
+    console.log("Warning: Could not determine player color from game state:", gameState);
+    return activeBalls.filter(ball => ball.color !== "white" && ball.color !== "black");
+  }
+  
+  // Count remaining balls of player's color
+  const remainingBalls = activeBalls.filter(ball => ball.color === playerColor).length;
+  
+  // If player has cleared all their balls, they should target the black
+  if (remainingBalls === 0) {
+    return activeBalls.filter(ball => ball.color === "black");
+  }
+  
+  // Otherwise, player should target their assigned color
+  console.log(`Player ${currentPlayer} should target ${playerColor} balls`);
+  return activeBalls.filter(ball => ball.color === playerColor);
+}
+
 // Helper function to check if path is clear between two points
 function isPathClear(startPoint, endPoint, ballPositions) {
   // Skip balls that are at start or end points
   const otherBalls = ballPositions.filter(ball => 
     !ball.pocketed && 
-    !((ball.x === startPoint.x && ball.y === startPoint.y) || 
-      (ball.x === endPoint.x && ball.y === endPoint.y))
+    !((Math.abs(ball.x - startPoint.x) < 1 && Math.abs(ball.y - startPoint.y) < 1) || 
+      (Math.abs(ball.x - endPoint.x) < 1 && Math.abs(ball.y - endPoint.y) < 1))
   );
   
   // If no other balls, path is clear
@@ -407,7 +538,7 @@ function isPathClear(startPoint, endPoint, ballPositions) {
   const dirY = endPoint.y - startPoint.y;
   const length = Math.sqrt(dirX * dirX + dirY * dirY);
   
-  // Normalize direction
+  // Normalise direction
   const normDirX = dirX / length;
   const normDirY = dirY / length;
   
