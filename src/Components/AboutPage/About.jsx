@@ -16,20 +16,17 @@ import Paper from '@mui/material/Paper';
 import HomeIcon from '@mui/icons-material/Home';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import VideogameAssetIcon from '@mui/icons-material/VideogameAsset';
-import GitHub from '@mui/icons-material/GitHub';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpIcon from '@mui/icons-material/Help';
 import InfoIcon from '@mui/icons-material/Info';
 import LogoutIcon from '@mui/icons-material/Logout';
-import LinkIcon from '@mui/icons-material/Link';
-import ComputerIcon from '@mui/icons-material/Computer';
 import CodeIcon from '@mui/icons-material/Code';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import SportsIcon from '@mui/icons-material/Sports';
 import SchoolIcon from '@mui/icons-material/School';
-import EmailIcon from '@mui/icons-material/Email';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
-import TwitterIcon from '@mui/icons-material/Twitter';
+import PersonIcon from '@mui/icons-material/Person';
 
 // Styled components
 const Header = styled(Box)(({ theme }) => ({
@@ -123,19 +120,21 @@ const FeatureCard = styled(Paper)(({ theme }) => ({
   },
 }));
 
-const TeamMemberCard = styled(Card)(({ theme }) => ({
+const DeveloperCard = styled(Card)(({ theme }) => ({
   height: '100%',
   borderRadius: theme.spacing(2),
   overflow: 'visible',
   position: 'relative',
-  paddingTop: theme.spacing(2),
+  padding: theme.spacing(4, 3, 3),
+  marginTop: theme.spacing(4),
+  boxShadow: '0 8px 25px rgba(0, 0, 0, 0.08)',
 }));
 
-const TeamMemberAvatar = styled(Avatar)(({ theme }) => ({
-  width: 80,
-  height: 80,
+const DeveloperAvatar = styled(Avatar)(({ theme }) => ({
+  width: 100,
+  height: 100,
   position: 'absolute',
-  top: -40,
+  top: -50,
   left: '50%',
   transform: 'translateX(-50%)',
   border: `4px solid ${theme.palette.background.paper}`,
@@ -159,52 +158,6 @@ export default function AboutPage() {
   
   // Function to check active route
   const isActive = (route) => path === route;
-  
-  // Team members data
-  const teamMembers = [
-    {
-      name: "Alex Chen",
-      role: "Lead Developer",
-      avatar: "A",
-      bio: "Computer vision expert with 7+ years of experience building image recognition systems. Previously worked at leading tech companies on advanced AI projects.",
-      social: {
-        linkedin: "#",
-        github: "#",
-        twitter: "#"
-      }
-    },
-    {
-      name: "Sarah Johnson",
-      role: "UX/UI Designer",
-      avatar: "S",
-      bio: "Passionate about creating intuitive user experiences. Previously designed interfaces for sports analytics platforms with a focus on data visualization.",
-      social: {
-        linkedin: "#",
-        github: "#",
-        twitter: "#"
-      }
-    },
-    {
-      name: "Michael Torres",
-      role: "Physics Engine Developer",
-      avatar: "M",
-      bio: "Physics simulation specialist with a background in game development. Created realistic physics engines for several popular mobile sports games.",
-      social: {
-        linkedin: "#",
-        github: "#"
-      }
-    },
-    {
-      name: "Emma Wilson",
-      role: "Pool Game Consultant",
-      avatar: "E",
-      bio: "Professional pool player with 10+ years of competitive experience. Provides expert advice on game mechanics and shot techniques.",
-      social: {
-        linkedin: "#",
-        twitter: "#"
-      }
-    }
-  ];
 
   // Features data
   const features = [
@@ -225,7 +178,7 @@ export default function AboutPage() {
     },
     {
       title: "Interactive Learning",
-      icon: <ComputerIcon sx={{ fontSize: 40, color: "#6930c3" }} />,
+      icon: <CodeIcon sx={{ fontSize: 40, color: "#6930c3" }} />,
       description: "Experiment with different shots and techniques in a risk-free environment. Save your simulations to track progress and improvement."
     }
   ];
@@ -249,10 +202,10 @@ export default function AboutPage() {
           <ActionButton onClick={() => navigate('/')}>Logout</ActionButton>
         </NavBar>
         <MainHeading variant="h1">
-          About Our Pool Game Simulation
+          About Pool Game Simulation
         </MainHeading>
         <SubHeading variant="body1">
-          Learn about our mission, our technology, and the team behind this innovative pool game analysis tool
+          Learn about this innovative pool game analysis tool and the technology behind it
         </SubHeading>
       </Header>
       
@@ -260,16 +213,16 @@ export default function AboutPage() {
         {/* Mission Section */}
         <Box sx={{ mb: 8 }}>
           <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 'bold' }}>
-            Our Mission
+            Project Mission
           </Typography>
           <Typography variant="body1" paragraph align="center" sx={{ maxWidth: 900, mx: 'auto', mb: 3 }}>
-            We created Pool Game Simulation to help both casual players and professionals improve their game through technology. 
-            By combining computer vision, physics simulation, and artificial intelligence, we've built a tool that analyzes your 
+            Pool Game Simulation was created to help both casual players and professionals improve their game through technology. 
+            By combining computer vision, physics simulation, and artificial intelligence, this tool analyzes your 
             pool table setups and provides valuable insights into optimal shot selection and game strategy.
           </Typography>
           <Typography variant="body1" paragraph align="center" sx={{ maxWidth: 900, mx: 'auto' }}>
             Whether you're a beginner looking to learn the basics or an expert aiming to perfect your technique, 
-            our goal is to enhance your understanding of pool game mechanics and help you become a better player.
+            the goal is to enhance your understanding of pool game mechanics and help you become a better player.
           </Typography>
         </Box>
         
@@ -301,7 +254,7 @@ export default function AboutPage() {
         </SectionTitle>
         <Box sx={{ mb: 8 }}>
           <Typography variant="body1" paragraph>
-            Our pool game simulation tool uses a sophisticated pipeline of computer vision and physics simulation:
+            The pool game simulation tool uses a sophisticated pipeline of computer vision and physics simulation:
           </Typography>
           
           <Grid container spacing={4}>
@@ -388,7 +341,7 @@ export default function AboutPage() {
               <Box sx={{ borderLeft: '3px solid #6930c3', pl: 3 }}>
                 <Typography variant="h6" gutterBottom>User Experience</Typography>
                 <Typography variant="body2" paragraph>
-                  We've designed an intuitive interface that:
+                  The application features an intuitive interface that:
                 </Typography>
                 <ul>
                   <li>
@@ -412,55 +365,51 @@ export default function AboutPage() {
           </Grid>
         </Box>
         
-        {/* Meet the Team */}
+        {/* About the Developer Section */}
         <SectionTitle>
-          Meet Our Team
+          About the Developer
         </SectionTitle>
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="body1" paragraph align="center" sx={{ maxWidth: 800, mx: 'auto', mb: 6 }}>
-            Our team brings together expertise in computer vision, physics simulation, game development, and 
-            professional pool playing to create the most accurate and useful pool game simulation tool available.
-          </Typography>
-          
-          <Grid container spacing={6}>
-            {teamMembers.map((member, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index}>
-                <Box sx={{ pt: 5, position: 'relative' }}>
-                  <TeamMemberCard>
-                    <TeamMemberAvatar sx={{ bgcolor: '#6930c3' }}>{member.avatar}</TeamMemberAvatar>
-                    <CardContent sx={{ pt: 4, pb: 2, textAlign: 'center' }}>
-                      <Typography variant="h6" gutterBottom>{member.name}</Typography>
-                      <Typography variant="subtitle2" color="primary" gutterBottom>{member.role}</Typography>
-                      <Divider sx={{ my: 1.5 }} />
-                      <Typography variant="body2" sx={{ mb: 2 }}>
-                        {member.bio}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                        {member.social.linkedin && (
-                          <SocialButton>
-                            <LinkedInIcon fontSize="small" />
-                          </SocialButton>
-                        )}
-                        {member.social.github && (
-                          <SocialButton>
-                            <GitHub fontSize="small" />
-                          </SocialButton>
-                        )}
-                        {member.social.twitter && (
-                          <SocialButton>
-                            <TwitterIcon fontSize="small" />
-                          </SocialButton>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </TeamMemberCard>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 6 }}>
+          <Grid container spacing={3} justifyContent="center">
+            <Grid item xs={12} md={8}>
+              <DeveloperCard>
+                <DeveloperAvatar sx={{ bgcolor: '#6930c3' }}>
+                  <PersonIcon sx={{ fontSize: 60 }} />
+                </DeveloperAvatar>
+                
+                <Box sx={{ mt: 5, textAlign: 'center' }}>
+                  <Typography variant="h5" gutterBottom>
+                    Solo Developer Project
+                  </Typography>
+                  <Typography variant="body1" paragraph>
+                    Pool Game Simulation is a personal project developed by a passionate programmer with interests in computer vision, 
+                    physics simulation, and game development. This project combines these interests with a love for pool to create 
+                    a practical tool that helps players visualize and improve their game.
+                  </Typography>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Typography variant="body2" color="textSecondary" paragraph>
+                    Skills utilized in this project include JavaScript/React for frontend development, Node.js for backend services, 
+                    Python for computer vision algorithms, and physics modeling for realistic simulation.
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+                    <SocialButton aria-label="github">
+                      <GitHubIcon />
+                    </SocialButton>
+                    <SocialButton aria-label="linkedin">
+                      <LinkedInIcon />
+                    </SocialButton>
+                  </Box>
                 </Box>
-              </Grid>
-            ))}
+              </DeveloperCard>
+            </Grid>
           </Grid>
         </Box>
         
-        {/* Final CTA */}
+        {/* Call to Action */}
         <Box sx={{ 
           bgcolor: 'rgba(105, 48, 195, 0.05)', 
           p: 5, 
@@ -472,7 +421,7 @@ export default function AboutPage() {
             Ready to Improve Your Game?
           </Typography>
           <Typography variant="body1" paragraph sx={{ maxWidth: 700, mx: 'auto', mb: 4 }}>
-            Start using our pool game simulation tool today to analyze your shots, improve your strategy, 
+            Start using the pool game simulation tool today to analyze your shots, improve your strategy, 
             and take your pool playing skills to the next level.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
@@ -495,38 +444,11 @@ export default function AboutPage() {
           </Box>
         </Box>
         
-        {/* Footer */}
+        {/* Copyright notice */}
         <Box sx={{ mt: 8, textAlign: 'center' }}>
-          <Divider sx={{ mb: 3 }} />
           <Typography variant="body2" color="text.secondary">
-            © 2023 Pool Game Simulation — All Rights Reserved
+            © 2025 Pool Game Simulation — All Rights Reserved
           </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 1 }}>
-            <Button 
-              variant="text" 
-              color="inherit" 
-              size="small"
-              startIcon={<InfoIcon fontSize="small" />}
-            >
-              Privacy Policy
-            </Button>
-            <Button 
-              variant="text" 
-              color="inherit" 
-              size="small"
-              startIcon={<InfoIcon fontSize="small" />}
-            >
-              Terms of Service
-            </Button>
-            <Button 
-              variant="text" 
-              color="inherit"
-              size="small"
-              startIcon={<EmailIcon fontSize="small" />}
-            >
-              Contact Us
-            </Button>
-          </Box>
         </Box>
       </Container>
     </Box>

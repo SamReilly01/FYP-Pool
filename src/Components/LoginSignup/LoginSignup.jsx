@@ -224,11 +224,7 @@ const LoginSignup = () => {
                 />
               </InputWrapper>
               
-              {isLogin && (
-                <ForgotPasswordText variant="body2">
-                  Forgot your password?
-                </ForgotPasswordText>
-              )}
+
               
               <ActionButton
                 type="submit"
